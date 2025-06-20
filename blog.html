@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blog - How to Not Win</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 20px; line-height: 1.6; }
+    h1 { text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>📝 How To Not Win</h1>
+  <div id="blog-post"></div>
+
+  <script>
+    async function loadMarkdown() {
+      try {
+        const res = await fetch('/blog/how-to-not-win.md');
+        if (!res.ok) throw new Error("Markdown file not found");
+        const md = await res.text();
+        const html = marked.parse(md);
+        document.getElementById('blog-post').innerHTML = html;
+      } catch (err) {
+        document.getElementById('blog-post').innerHTML = "<p>Blog post not found.</p>";
+        console.error(err);
+      }
+    }
+
+    loadMarkdown();
+  </script>
+</body>
+</html>
