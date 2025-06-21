@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excluziv - AI Legal Tools</title>
+    <base target="_self">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Configure Tailwind CSS for class-based dark mode
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase Module -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyANizkpJLRvhYWlIPH6qDQjutxxV12M7PA", // Firebase API Key
+            authDomain: "excluziv-3d87f.firebaseapp.com",
+            projectId: "excluziv-3d87f",
+            storageBucket: "excluziv-3d87f.appspot.com",
+            messagingSenderId: "497134345362",
+            appId: "1:497134345362:web:0b3cb77396de81b72d9a4b",
+            measurementId: "G-0M7Z87NRZD"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app);
+        window.db = getFirestore(app);
+        setLogLevel('debug'); 
+
+        const provider = new GoogleAuthProvider();
+
+        window.signInWithGoogle = () => {
+            signInWithPopup(window.auth, provider)
+                .then(() => {
+                    closeAuthModal();
+                    showPage('ai-assistant-page');
+                })
+                .catch((error) => {
+                    console.error("Google Sign-In Error:", error);
+                    showCustomAlert(getCurrentTranslation('authFailedError'));
+                });
+        };
+
+        window.signInAsGuest = () => {
+            signInAnonymously(window.auth)
+                .then(() => {
+                    closeAuthModal();
+                    showPage('ai-assistant-page');
+                })
+                .catch((error) => {
+                    console.error("Anonymous Sign-In Error:", error);
+                    showCustomAlert(getCurrentTranslation('guestLoginFailedError'));
+                });
+        };
+
+        window.signOutUser = () => {
+            document.getElementById('logout-confirm-modal').classList.remove('hidden');
+        };
+        
+        window.confirmLogout = () => {
+            signOut(window.auth).catch((error) => console.error("Sign Out Error:", error));
+            document.getElementById('logout-confirm-modal').classList.add('hidden');
+        };
+
+        window.cancelLogout = () => {
+            document.getElementById('logout-confirm-modal').classList.add('hidden');
+        };
+
+        onAuthStateChanged(window.auth, user => {
+            const authRequiredElements = document.querySelectorAll('.auth-required');
+            const guestOnlyElements = document.querySelectorAll('.guest-only');
+
+            if (user) { 
+                authRequiredElements.forEach(el => el.classList.remove('hidden'));
+                guestOnlyElements.forEach(el => el.classList.add('hidden'));
+            } else { 
+                authRequiredElements.forEach(el => el.classList.add('hidden'));
+                guestOnlyElements.forEach(el => el.classList.remove('hidden'));
+                
+                const currentPage = document.querySelector('.page:not(.hidden)');
+                if (currentPage && (currentPage.id === 'ai-assistant-page' || currentPage.id === 'tools-page') ) {
+                   showPage('home-page');
+                }
+            }
+        });
+
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            padding-bottom: 5rem !important; /* Mobile UI Fix */
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .service-card {
+             transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+        .service-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .animated-section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animated-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .prose {
+             max-width: 100% !important;
+        }
+        .prose pre {
+            background-color: #f3f4f6;
+            color: #111827;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .dark .prose pre {
+            background-color: #1f2937;
+            color: #d1d5db;
+        }
+        #ai-output h3, .blog-content h2, .blog-content h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        .blog-content h3 {
+             font-size: 1.25rem;
+             font-weight: 600;
+        }
+        #ai-output ul, .blog-content ul {
+            list-style-position: inside;
+            list-style-type: disc;
+            padding-left: 1rem;
+            margin-bottom: 1rem;
+        }
+        .output-heading {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 1rem;
+            margin-bottom: 0.25rem;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 0.25rem;
+        }
+        .dark .output-heading {
+             color: #9ca3af;
+             border-bottom-color: #374151;
+        }
+        .chat-container {
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            height: 70vh;
+            max-height: 700px;
+            width: 90vw;
+            max-width: 400px;
+            border-radius: 0.75rem;
+        }
+        .chat-hidden {
+            transform: translateY(110%);
+            visibility: hidden;
+            opacity: 0;
+        }
+        .chat-visible {
+            transform: translateY(0);
+            visibility: visible;
+            opacity: 1;
+        }
+        #disclaimer-modal, #auth-modal, #optimizer-modal {
+            transition: opacity 0.3s ease;
+        }
+        .dropdown:hover .dropdown-menu { display: block; }
+        .dropdown-menu { display: none; }
+        .lang-btn.active { background-color: #3B82F6; color: white; }
+         * { transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, opacity 0.3s ease; }
+        
+        /* --- Mobile menu overlay & panel --- */
+        #mobile-menu-overlay { display: none; }
+        #mobile-menu-overlay.active {
+            display: block; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 999;
+        }
+        #mobile-menu-panel {
+            position: fixed; top: 0; left: 0;
+            height: 100%; width: 16rem;
+            background: #fff; 
+            padding: 1.5rem; transform: translateX(-100%);
+            transition: transform 0.3s ease; z-index: 1000;
+        }
+        .dark #mobile-menu-panel {
+             background: #1f2937; /* dark:bg-gray-800 */
+        }
+        #mobile-menu-panel.active {
+            transform: translateX(0);
+        }
+        /* --- Hero stacking on very small screens --- */
+        @media (max-width: 639px) {
+            .hero-container { flex-direction: column-reverse !important; }
+        }
+        /* --- Touch ‑ friendly buttons & form tweaks --- */
+        button, .bg-blue-600 {
+            padding-top: 1rem !important; 
+            padding-bottom: 1rem !important;
+        }
+        #query-form {
+            max-width: 100% !important;
+        }
+        /* --- Hide bottom nav when chat opens --- */
+        #bottom-nav.hidden {
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        /* --- Skeleton loader placeholder class --- */
+        .skeleton {
+            background: #e2e8f0; /* light gray */
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 antialiased">
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu-overlay" aria-hidden="true"></div>
+
+    <!-- Mobile Menu Panel (Sliding) -->
+    <div id="mobile-menu-panel" role="dialog" aria-modal="true" aria-labelledby="mobile-menu-label">
+      <button id="mobile-menu-close" class="mb-4 text-gray-700 dark:text-gray-200" aria-label="Close menu">
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <nav aria-label="Mobile main navigation">
+        <a href="#" onclick="showPage('home-page', event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="home">Home</a>
+        <a href="#" onclick="showPage('about-page', event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="about">About</a>
+        <a href="#" onclick="showPage('blog-page', event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="blog">Blog</a>
+        <a href="#" onclick="showPage('team-page', event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="team">Team</a>
+        <a href="#" onclick="showAiAssistantPage(event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="tools">Tools</a>
+        <a href="#" onclick="showPage('contact-page', event); closeMenu();" class="block py-2 text-lg font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400" data-lang-key="contact">Contact</a>
+      </nav>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-sm fixed w-full z-20 top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" class="flex items-center" onclick="showPage('home-page', event)">
+                        <img src="https://i.ibb.co/tptYSRk3/Excuxziv-no-back.png" alt="Excluziv Logo" class="h-9 w-auto" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/100x36/ffffff/000000?text=Excluziv';">
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#" class="nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium" onclick="showPage('home-page', event)" data-lang-key="home">Home</a>
+                    <a href="#" class="nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium" onclick="showPage('about-page', event)" data-lang-key="about">About</a>
+                    <a href="#" class="nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium" onclick="showPage('blog-page', event)" data-lang-key="blog">Blog</a>
+                    <a href="#" class="nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium" onclick="showPage('team-page', event)" data-lang-key="team">Team</a>
+                    <a href="#" class="nav-link text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium" onclick="showAiAssistantPage(event)" data-lang-key="tools">Tools</a>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Dark Mode Toggle -->
+                        <button id="dark-mode-toggle" class="relative inline-flex items-center h-8 w-14 rounded-full p-1 bg-gray-300 dark:bg-gray-600 focus:outline-none">
+                            <span id="dark-mode-thumb" class="w-6 h-6 rounded-full bg-white flex items-center justify-center text-gray-500 shadow-md transform transition-transform duration-300 ease-in-out dark:translate-x-6">
+                                <i class="fas fa-sun"></i>
+                                <i class="fas fa-moon hidden"></i>
+                            </span>
+                        </button>
+                         <!-- Language Switcher -->
+                        <div id="language-switcher" class="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-full">
+                           <button class="lang-btn px-3 py-1 text-sm rounded-full" data-lang="en">EN</button>
+                           <button class="lang-btn px-3 py-1 text-sm rounded-full" data-lang="hi">हिंदी</button>
+                        </div>
+                        <!-- Auth Buttons -->
+                        <div class="guest-only">
+                            <button onclick="showAiAssistantPage(event)" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium shadow-md" data-lang-key="tryAiAssistant">Try AI Assistant</button>
+                        </div>
+                        <div class="auth-required hidden">
+                           <button onclick="signOutUser()" class="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg font-medium shadow-md" data-lang-key="logout">Logout</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="mobile-menu-button" class="text-gray-500 hover:text-gray-600 focus:outline-none" aria-label="Open menu" aria-expanded="false">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="pt-16 min-h-screen">
+        <!-- Home Page -->
+        <div id="home-page" class="page">
+             <!-- Hero Section -->
+            <section class="py-20 md:py-28 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-7xl mx-auto">
+                    <div class="flex flex-col md:flex-row items-center hero-container">
+                        <div class="md:w-1/2 mb-10 md:mb-0 text-center md:text-left">
+                            <h1 class="text-4xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-6 leading-tight">
+                                <span data-lang-key="heroTitle">Revolutionizing Legal Services with</span> <span class="gradient-text" data-lang-key="heroSubtitle">AI Technology</span>
+                            </h1>
+                            <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 max-w-xl mx-auto md:mx-0" data-lang-key="heroDescription">
+                                Excluziv provides cutting-edge legal-tech solutions to streamline your legal processes and enhance efficiency with artificial intelligence.
+                            </p>
+                            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center md:justify-start">
+                                <button onclick="showAiAssistantPage(event)" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1" data-lang-key="tryAiAssistantFree">
+                                    Try AI Assistant for FREE
+                                </button>
+                                <a href="#" onclick="showPage('about-page', event)" class="bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 px-8 py-3 rounded-lg font-semibold transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1" data-lang-key="learnMore">
+                                    Learn More
+                                </a>
+                            </div>
+                        </div>
+                        <div class="md:w-1/2">
+                            <img src="https://images.unsplash.com/photo-1589829545856-d10d557cf95f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80" alt="Legal Tech" class="rounded-lg shadow-2xl w-full h-auto" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/600x400/cccccc/ffffff?text=Legal+Tech';">
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Services Section -->
+            <section class="py-20 bg-gray-100 dark:bg-gray-800/50 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-7xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="servicesTitle">Our Services</h2>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-lang-key="servicesDescription">
+                            We offer comprehensive legal-tech solutions tailored to your specific needs.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-robot text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service1Title">AI Legal Assistant</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service1Description">
+                                Our AI-powered assistant provides instant answers to legal questions, helping you navigate complex legal matters with ease.
+                            </p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-file-contract text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service2Title">Document Automation</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service2Description">
+                                Generate legal documents in minutes with our smart templates that adapt to your specific requirements.
+                            </p>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-file-shield text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service3Title">Contract Review & Analysis</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service3Description">
+                                Leverage AI to analyze contracts, identify risks, and ensure compliance with legal standards.
+                            </p>
+                        </div>
+                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-file-magnifying-glass text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service4Title">Discovery Document Analyzer</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service4Description">
+                                Efficiently sift through large volumes of discovery documents to find key evidence and insights.
+                            </p>
+                        </div>
+                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-clipboard-check text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service5Title">Compliance Checker</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service5Description">
+                                Automatically audit documents and business processes against regulatory checklists to ensure compliance.
+                            </p>
+                        </div>
+                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center service-card">
+                            <div class="text-blue-600 dark:text-blue-400 mb-5 inline-block bg-blue-100 dark:bg-blue-900/50 p-4 rounded-full">
+                                <i class="fas fa-user-secret text-4xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="service6Title">GDPR Privacy Services</h3>
+                            <p class="text-gray-600 dark:text-gray-300" data-lang-key="service6Description">
+                                Assess and manage your data privacy obligations under GDPR and other data protection regulations.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <!-- Testimonials -->
+            <section class="py-20 bg-gray-50 dark:bg-gray-800/50 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-7xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="testimonialsTitle">What Our Clients Say</h2>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-lang-key="testimonialsDescription">
+                            Trusted by legal professionals and businesses worldwide.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="text-yellow-400 mr-2">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 mb-4" data-lang-key="testimonial1">
+                                "Excluziv's AI assistant has transformed how we handle client inquiries. It's like having an extra associate available 24/7."
+                            </p>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gray-300 mr-3 overflow-hidden">
+                                    <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="Sarah Johnson" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://placehold.co/40x40/E2E8F0/4A5568?text=SJ'">
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900 dark:text-white">Sarah Johnson</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Partner, Johnson & Associates</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="text-yellow-400 mr-2">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 mb-4" data-lang-key="testimonial2">
+                                "The document automation tool has saved us hundreds of hours. The accuracy and customization options are impressive."
+                            </p>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gray-300 mr-3 overflow-hidden">
+                                     <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Michael Chen" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://placehold.co/40x40/E2E8F0/4A5568?text=MC'">
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900 dark:text-white">Michael Chen</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">General Counsel, TechCorp</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="text-yellow-400 mr-2">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star-half-alt"></i>
+                                </div>
+                            </div>
+                            <p class="text-gray-600 dark:text-gray-300 mb-4" data-lang-key="testimonial3">
+                                "As a solo practitioner, Excluziv's tools have leveled the playing field for me. I can compete with much larger firms now."
+                            </p>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gray-300 mr-3 overflow-hidden">
+                                    <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Emily Rodriguez" class="w-full h-full object-cover" loading="lazy" onerror="this.src='https://placehold.co/40x40/E2E8F0/4A5568?text=ER'">
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-gray-900 dark:text-white">Emily Rodriguez</h4>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Attorney at Law</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+             <!-- Submit Query Section -->
+            <section class="py-20 bg-gray-100 dark:bg-gray-800/50 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-3xl mx-auto text-center">
+                    <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="submitQueryTitle">Submit Your Query</h2>
+                    <p class="text-lg text-gray-600 dark:text-gray-300 mb-8" data-lang-key="submitQueryDescription">
+                        Have a question? Fill out the form below and we'll get back to you.
+                    </p>
+                    <form id="query-form" class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg text-left space-y-6" novalidate>
+                        <div>
+                            <label for="query-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-lang-key="nameLabel">Your Name</label>
+                            <input type="text" name="data[Name]" id="query-name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required>
+                        </div>
+                        <div>
+                            <label for="query-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-lang-key="emailLabel">Your Email</label>
+                            <input type="email" name="data[Email]" id="query-email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required>
+                        </div>
+                        <div>
+                            <label for="query-message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" data-lang-key="messageLabel">Your Message</label>
+                            <textarea name="data[Message]" id="query-message" rows="5" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" required></textarea>
+                        </div>
+                        <div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1" data-lang-key="submitInquiry">
+                                Submit Your Inquiry
+                            </button>
+                        </div>
+                        <div id="query-form-message" class="text-center mt-4"></div>
+                    </form>
+                </div>
+            </section>
+        </div>
+
+        <!-- Tools Page -->
+        <div id="tools-page" class="page hidden">
+            <section class="py-20 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h1 class="text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-lang-key="toolsPageTitle">Our AI Tools</h1>
+                        <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-lang-key="toolsPageDescription">
+                            Select a tool to get started with our AI Legal Assistant.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <button onclick="selectToolAndNavigate('legalDefinitions', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-gavel text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolLegalDefinitions">Legal Definitions</span>
+                        </button>
+                       <button onclick="selectToolAndNavigate('caseInsights', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-book-open text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolCaseInsights">Case Insights</span>
+                        </button>
+                         <button onclick="selectToolAndNavigate('aiCaseSummary', event)" class="col-span-2 sm:col-span-1 ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 ring-2 ring-blue-500">
+                            <i class="fas fa-star text-3xl text-yellow-400 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolAiCaseSummary">AI Case Summary</span>
+                        </button>
+                        <button onclick="selectToolAndNavigate('draftPetition', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-file-signature text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolDraftPetition">Draft a Petition</span>
+                        </button>
+                        <button onclick="selectToolAndNavigate('explainNotice', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-search text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolExplainNotice">Explain a Notice</span>
+                        </button>
+                         <button onclick="selectToolAndNavigate('docGenerator', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-file-alt text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolDocGenerator">Document Generator</span>
+                        </button>
+                        <button onclick="selectToolAndNavigate('bareAct', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-balance-scale text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolBareAct">Bare Act Navigator</span>
+                        </button>
+                        <button onclick="selectToolAndNavigate('casePrediction', event)" class="ai-tool-btn text-left p-4 bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <i class="fas fa-lightbulb text-3xl text-blue-500 mb-3"></i>
+                            <span class="font-semibold block text-gray-800 dark:text-gray-200" data-lang-key="toolCasePrediction">Case Outcome Prediction</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- AI Assistant Page -->
+        <div id="ai-assistant-page" class="page hidden">
+            <section class="py-12 sm:py-20 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-4xl mx-auto">
+                    <div class="text-center mb-12">
+                         <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-lang-key="aiAssistantTitle">Excluziv AI Legal Assistant</h1>
+                         <p class="text-lg text-gray-600 dark:text-gray-300" data-lang-key="aiAssistantSubtitle">Your copilot for navigating the complexities of Indian law.</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 sm:p-8">
+                         <div class="mb-6">
+                            <label class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3" data-lang-key="chooseTool">Choose a Tool</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                                <button onclick="selectAiTool('legalDefinitions', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-gavel text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolLegalDefinitions">Legal Definitions</span>
+                                </button>
+                               <button onclick="selectAiTool('caseInsights', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-book-open text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolCaseInsights">Case Insights</span>
+                                </button>
+                                 <button onclick="selectAiTool('aiCaseSummary', this)" class="col-span-2 sm:col-span-1 ai-tool-btn text-left p-3 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900 rounded-lg transition-all duration-200 ring-2 ring-blue-500">
+                                    <i class="fas fa-star text-yellow-400"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolAiCaseSummary">AI Case Summary</span>
+                                </button>
+                                <button onclick="selectAiTool('draftPetition', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-file-signature text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolDraftPetition">Draft a Petition</span>
+                                </button>
+                                <button onclick="selectAiTool('explainNotice', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-search text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolExplainNotice">Explain a Notice</span>
+                                </button>
+                                 <button onclick="selectAiTool('docGenerator', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-file-alt text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolDocGenerator">Document Generator</span>
+                                </button>
+                                <button onclick="selectAiTool('bareAct', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-balance-scale text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolBareAct">Bare Act Navigator</span>
+                                </button>
+                                <button onclick="selectAiTool('casePrediction', this)" class="ai-tool-btn text-left p-3 bg-gray-100 hover:bg-blue-100 dark:bg-gray-700 dark:hover:bg-blue-900/50 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-lightbulb text-blue-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolCasePrediction">Case Outcome Prediction</span>
+                                </button>
+                            </div>
+                        </div>
+
+                         <!-- Advanced Tools Section -->
+                        <div class="mb-6 mt-8">
+                            <label class="block text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3" data-lang-key="advancedTools">Advanced Legal Tools</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                                <button onclick="selectAiTool('devilsAdvocate', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-balance-scale-left text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolDevilsAdvocate">Devil's Advocate</span>
+                                </button>
+                                <button onclick="selectAiTool('docCompare', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-exchange-alt text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolDocCompare">Doc Compare</span>
+                                </button>
+                                <button onclick="selectAiTool('strategySim', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-project-diagram text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolStrategySim">Strategy Simulator</span>
+                                </button>
+                                <button onclick="selectAiTool('regulatoryImpact', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-landmark text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolRegulatoryImpact">Regulatory Impact</span>
+                                </button>
+                                <button onclick="selectAiTool('stakeholder', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-users text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolStakeholder">Stakeholder Dynamics</span>
+                                </button>
+                                 <button onclick="selectAiTool('contractIntel', this)" class="ai-tool-btn text-left p-3 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900 rounded-lg transition-all duration-200">
+                                    <i class="fas fa-network-wired text-indigo-500"></i>
+                                    <span class="font-semibold block mt-1 text-gray-800 dark:text-gray-200 text-sm" data-lang-key="toolContractIntel">Contract Intelligence</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="ai-chat-container" class="mt-6">
+                             <div id="ai-chat-area" class="min-h-[45vh] mb-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg" style="transition: min-height 0.3s ease-in-out;">
+                                <!-- Chat messages will be appended here -->
+                            </div>
+    
+                            <div id="follow-up-questions" class="flex flex-wrap gap-2 mb-4">
+                                <!-- Follow-up questions will be appended here -->
+                            </div>
+                            
+                            <div class="mb-2">
+                               <p class="text-sm text-gray-500 dark:text-gray-400 italic" data-lang-key="optimizerRecommendation">
+                                    For better results, try our ✨ Prompt Optimizer before you submit!
+                               </p>
+                            </div>
+                            <div class="relative">
+                                <textarea id="ai-query-input" rows="3" class="w-full p-4 pr-28 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500" placeholder="Place Your Query Here (Kuch bura nahi hoga, vishwas karo)"></textarea>
+                                <div class="absolute top-1/2 -translate-y-1/2 right-3 flex items-center space-x-2">
+                                    <button id="optimize-prompt-btn" title="Optimize this prompt" class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        <i class="fas fa-magic text-lg"></i>
+                                    </button>
+                                     <label for="file-upload" class="cursor-pointer text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600">
+                                        <i class="fas fa-paperclip text-lg"></i>
+                                    </label>
+                                    <input id="file-upload" type="file" class="hidden" multiple>
+                                    <button onclick="generateAiResponse()" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-all shadow-md hover:shadow-lg transform hover:scale-110">
+                                        <i class="fas fa-arrow-up text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="file-display-area" class="mt-3"></div>
+                        </div>
+                    </div>
+
+                     <!-- History and FAQ Section -->
+                     <div class="max-w-4xl mx-auto mt-12 animated-section">
+                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                            <button onclick="toggleHistory()" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                <span><i class="fas fa-history mr-2"></i><span data-lang-key="historyTitle">AI Assistant History</span></span>
+                                <i id="history-chevron" class="fas fa-chevron-down transition-transform"></i>
+                            </button>
+                            <div id="history-content" class="hidden p-5 border-t border-gray-200 dark:border-gray-700 space-y-4">
+                                <!-- History items will be injected here -->
+                                <p id="history-placeholder" class="text-gray-500 dark:text-gray-400" data-lang-key="historyPlaceholder">No history yet. Ask the AI assistant a question to get started.</p>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <div class="max-w-4xl mx-auto mt-8 animated-section">
+                        <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-10" data-lang-key="faqTitle">Frequently Asked Questions</h2>
+                        <div class="space-y-4">
+                            <div class="faq-item bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                    <span data-lang-key="faq1Title">Is the AI assistant a replacement for a lawyer?</span>
+                                    <i class="fas fa-chevron-down transition-transform"></i>
+                                </button>
+                                <div class="faq-answer hidden p-5 border-t border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" data-lang-key="faq1Answer">
+                                    No. The Excluziv AI Assistant is a tool for informational and educational purposes only. It is not a substitute for professional legal advice from a qualified lawyer. For critical legal matters, always consult with a human legal expert.
+                                </div>
+                            </div>
+                             <div class="faq-item bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                    <span data-lang-key="faq2Title">How accurate is the information provided?</span>
+                                    <i class="fas fa-chevron-down transition-transform"></i>
+                                </button>
+                                <div class="faq-answer hidden p-5 border-t border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" data-lang-key="faq2Answer">
+                                    Our AI models are trained on a vast corpus of Indian legal documents, case law, and statutes. While we strive for high accuracy, the legal landscape is constantly evolving. The information should be verified and used as a starting point, not as a final, definitive source.
+                                </div>
+                            </div>
+                            <div class="faq-item bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                    <span data-lang-key="faq3Title">What's the difference between Basic and Pro mode?</span>
+                                    <i class="fas fa-chevron-down transition-transform"></i>
+                                </button>
+                                <div class="faq-answer hidden p-5 border-t border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" data-lang-key="faq3Answer">
+                                    <b>Basic Mode</b> is designed for quick, easy-to-understand answers to straightforward questions. <b>Pro Mode</b> leverages more advanced reasoning to provide detailed explanations, analyze context from your input, and generate comprehensive draft-level documents. Think of it as the difference between a quick summary and a detailed report.
+                                </div>
+                            </div>
+                            <div class="faq-item bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                    <span data-lang-key="faq4Title">Is my data safe?</span>
+                                    <i class="fas fa-chevron-down transition-transform"></i>
+                                </button>
+                                <div class="faq-answer hidden p-5 border-t border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" data-lang-key="faq4Answer">
+                                    We take your privacy seriously. If you sign in with Google, we only use your email for authentication and to save your history. We do not sell your data. Anonymous guest users have their history stored locally on their device and it is not sent to our servers.
+                                </div>
+                            </div>
+                            <div class="faq-item bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                                <button onclick="toggleFaq(this)" class="w-full flex justify-between items-center text-left p-5 font-semibold text-gray-800 dark:text-gray-200">
+                                    <span data-lang-key="faq5Title">Can I save my chat history?</span>
+                                    <i class="fas fa-chevron-down transition-transform"></i>
+                                </button>
+                                <div class="faq-answer hidden p-5 border-t border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300" data-lang-key="faq5Answer">
+                                    Yes, your conversation history is automatically saved to your account if you sign in with Google. This allows you to continue your sessions across different devices. If you use the guest mode, your history is only saved on the browser you are currently using and will be lost if you clear your browser data.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- About Page -->
+        <div id="about-page" class="page hidden">
+             <section class="py-20 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-7xl mx-auto animated-section">
+                    <div class="text-center mb-16">
+                        <h1 class="text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-lang-key="aboutTitle">About Excluziv</h1>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row items-center mb-20 gap-12">
+                        <div class="md:w-1/2">
+                            <p class="text-xl text-gray-700 dark:text-gray-200 mb-6" data-lang-key="aboutText1">
+                                <b>Excluziv</b> is your strategic partner at the intersection of <b>cryptocurrency</b>, <b>AI regulations</b>, and <b>business compliance</b>.
+                            </p>
+                            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6" data-lang-key="aboutText2">
+                                We specialize in helping <b>startups</b> and <b>growth-stage companies</b> decode complex regulatory frameworks, ensuring they stay compliant while scaling globally. From navigating the shifting terrain of <b>crypto regulations</b> to implementing <b>AI-driven legal and compliance solutions</b>, we deliver clarity where it matters most.
+                            </p>
+                            <p class="text-lg text-gray-600 dark:text-gray-300" data-lang-key="aboutText3">
+                                Whether you're launching a Web3 product, integrating AI into your operations, or simply want to future-proof your compliance strategy — <b>Excluziv</b> equips you with the insights and tools to lead with confidence.
+                            </p>
+                        </div>
+                        <div class="md:w-1/2 flex items-center justify-center p-8 bg-gray-100 dark:bg-gray-800/50 rounded-lg shadow-2xl">
+                            <img src="https://i.ibb.co/tptYSRk3/Excuxziv-no-back.png" alt="Our Story" class="w-auto h-auto max-w-sm" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/300x100/F3F4F6/000000?text=Excluziv';">
+                        </div>
+                    </div>
+                    
+                    <div class="py-16 bg-gray-100 dark:bg-gray-800/50 rounded-xl px-8 animated-section">
+                        <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-10 text-center" data-lang-key="coreOfferingsTitle">Our Core Offerings</h2>
+                        <div class="max-w-4xl mx-auto">
+                            <ul class="space-y-6 text-lg text-gray-700 dark:text-gray-200">
+                                <li class="flex items-start"><span class="text-2xl mr-4">🔍</span><span data-lang-key="offering1">Regulatory intelligence on global crypto and AI frameworks</span></li>
+                                <li class="flex items-start"><span class="text-2xl mr-4">🧾</span><span data-lang-key="offering2">Compliance consulting for startups, fintechs & tech firms</span></li>
+                                <li class="flex items-start"><span class="text-2xl mr-4">🧠</span><span data-lang-key="offering3">Custom AI solutions for legal research, contract reviews & risk assessment</span></li>
+                                <li class="flex items-start"><span class="text-2xl mr-4">📊</span><span data-lang-key="offering4">In-depth business case studies and strategic analysis</span></li>
+                                <li class="flex items-start"><span class="text-2xl mr-4">📢</span><span data-lang-key="offering5">High-impact content tailored for founders, VCs & legal teams</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Blog Page -->
+        <div id="blog-page" class="page hidden">
+             <section class="py-20 px-4 sm:px-6 lg:px-8 animated-section">
+                <div class="max-w-7xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h1 class="text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-lang-key="blogTitle">Excluziv Blog</h1>
+                        <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-lang-key="blogDescription">
+                            Insights, news, and perspectives on legal technology and AI
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-16" id="blog-posts-grid">
+                        <!-- Blog Post Cards will be injected here by JavaScript -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Individual Blog Post Pages -->
+        <div id="blog-post-container">
+            <!-- Blog Post Content will be injected here by JavaScript -->
+        </div>
+
+
+        <!-- Team Page -->
+        <div id="team-page" class="page hidden">
+             <section class="py-20 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-7xl mx-auto animated-section">
+                    <div class="text-center mb-16">
+                        <h1 class="text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-lang-key="teamTitle">Our Team</h1>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row items-center justify-center gap-12">
+                        <div class="md:w-1/3 mb-10 md:mb-0">
+                            <img src="https://i.ibb.co/pjFKTvVD/siddhant-whatapp-dp-1.jpg" alt="Siddhant Tiwari" class="rounded-xl shadow-2xl w-full h-auto mx-auto" style="max-width: 350px;" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/350x450/E2E8F0/4A5568?text=Siddhant';">
+                        </div>
+                        <div class="md:w-2/3 md:pl-12">
+                            <h2 class="text-4xl font-bold text-gray-900 dark:text-white mb-2" data-lang-key="teamMemberName">Siddhant Tiwari</h2>
+                            <div class="text-lg text-gray-600 dark:text-gray-300 mb-6" data-lang-key="teamMemberBio2">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Contact Page -->
+         <div id="contact-page" class="page hidden">
+             <section class="py-20 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-7xl mx-auto">
+                    <div class="text-center mb-16">
+                        <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="contactTitle">Contact Us</h1>
+                        <p class="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto" data-lang-key="contactDescription">
+                            Get in touch with our team to learn more about our solutions
+                        </p>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row">
+                        <div class="md:w-1/2 mb-10 md:mb-0 md:pr-10">
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6" data-lang-key="contactInfoTitle">Contact Information</h2>
+                            <div class="space-y-6">
+                                 <div class="flex items-start">
+                                    <div class="text-blue-600 dark:text-blue-400 mr-4 mt-1">
+                                        <i class="fas fa-phone-alt text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1" data-lang-key="phoneLabel">Phone</h3>
+                                        <p class="text-gray-600 dark:text-gray-300">
+                                            +91-7974702342
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start">
+                                    <div class="text-blue-600 dark:text-blue-400 mr-4 mt-1">
+                                        <i class="fas fa-envelope text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1" data-lang-key="emailLabel">Email</h3>
+                                        <p class="text-gray-600 dark:text-gray-300">
+                                            <a href="mailto:work.excluziv@gmail.com" class="hover:underline">work.excluziv@gmail.com</a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-10">
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6" data-lang-key="connectWithUs">Connect With Us</h2>
+                                <div class="flex space-x-4">
+                                    <a href="https://www.linkedin.com/company/excluziv-news" target="_blank" rel="noopener noreferrer" class="text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 text-2xl flex items-center">
+                                        <i class="fab fa-linkedin"></i><span class="ml-2">Excluziv</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="md:w-1/2">
+                            <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-8">
+                                <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-6" data-lang-key="sendMessageTitle">Send Us a Message</h2>
+                                <form>
+                                    <div class="mb-6">
+                                        <label for="name" class="block text-gray-700 dark:text-gray-300 font-medium mb-2" data-lang-key="nameLabel">Name</label>
+                                        <input type="text" id="name" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white">
+                                    </div>
+                                    
+                                    <div class="mb-6">
+                                        <label for="email" class="block text-gray-700 dark:text-gray-300 font-medium mb-2" data-lang-key="emailLabel">Email</label>
+                                        <input type="email" id="email" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white">
+                                    </div>
+                                    
+                                    <div class="mb-6">
+                                        <label for="subject" class="block text-gray-700 dark:text-gray-300 font-medium mb-2" data-lang-key="subjectLabel">Subject</label>
+                                        <input type="text" id="subject" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white">
+                                    </div>
+                                    
+                                    <div class="mb-6">
+                                        <label for="message" class="block text-gray-700 dark:text-gray-300 font-medium mb-2" data-lang-key="messageLabel">Message</label>
+                                        <textarea id="message" rows="5" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"></textarea>
+                                    </div>
+                                    
+                                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-medium transition duration-300 w-full" data-lang-key="sendMessageBtn">
+                                        Send Message
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- Widgets Container -->
+    <div id="bottom-nav" class="fixed bottom-6 right-6 z-30 flex flex-col items-end space-y-4">
+        <!-- WhatsApp Widget -->
+        <a href="https://wa.me/917974702342" target="_blank" rel="noopener noreferrer" class="transition-transform duration-300 hover:scale-110">
+            <div class="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
+                <i class="fab fa-whatsapp text-4xl"></i>
+            </div>
+        </a>
+        </a>
+        <!-- Personal Assistant Widget -->
+        <button onclick="toggleSimpleChat()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg transition-transform duration-300 hover:scale-110">
+            <i class="fas fa-robot text-2xl"></i>
+        </button>
+    </div>
+
+
+    <!-- Chatbot Iframe Container -->
+    <div id="chat-container" class="fixed bottom-24 right-6 bg-white dark:bg-gray-800 shadow-xl border border-gray-200 dark:border-gray-700 z-40 chat-container chat-hidden overflow-hidden">
+        <!-- Close button for chatbot -->
+        <button onclick="toggleSimpleChat()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-2xl z-50 p-2 rounded-full bg-gray-100 dark:bg-gray-700">
+            &times;
+        </button>
+       <iframe
+            src="https://www.chatbase.co/chatbot-iframe/gEBglZfOKrn7M-u1pWRaZ"
+            width="100%"
+            style="height: calc(100% - 48px);"
+            frameborder="0"
+        ></iframe>
+    </div>
+    
+    
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-8 max-w-sm text-center relative">
+             <button onclick="closeAuthModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-2xl">&times;</button>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="loginTitle">Login to Excluziv</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-8" data-lang-key="loginDescription">Sign in to save your history or continue as a guest.</p>
+            <div class="space-y-4">
+                <button onclick="signInWithGoogle()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg w-full flex items-center justify-center transition-all duration-300">
+                    <i class="fab fa-google text-xl mr-3"></i>
+                    <span data-lang-key="signInGoogle">Sign in with Google</span>
+                </button>
+                <button onclick="signInAsGuest()" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg w-full flex items-center justify-center transition-all duration-300">
+                     <i class="fas fa-user-secret text-xl mr-3"></i>
+                     <span data-lang-key="signInGuest">Continue as Guest</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-confirm-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-8 max-w-sm text-center">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4" data-lang-key="confirmLogoutTitle">Confirm Logout</h3>
+            <p class="text-gray-600 dark:text-gray-300 mb-8" data-lang-key="confirmLogoutText">Are you sure you want to log out?</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="cancelLogout()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-6 rounded-lg" data-lang-key="cancel">Cancel</button>
+                <button onclick="confirmLogout()" class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg" data-lang-key="yesLogout">Yes, Logout</button>
+            </div>
+        </div>
+    </div>
+    
+     <!-- Prompt Optimizer Modal -->
+    <div id="optimizer-modal" class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-6 max-w-md w-full relative">
+            <button onclick="closeOptimizerModal()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-2xl">&times;</button>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" data-lang-key="optimizerTitle">✨ Optimized Prompt</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4" data-lang-key="optimizerDescription">We’ve improved your prompt for clarity and better results. Use it as is or keep editing!</p>
+            <div id="optimized-prompt-output" class="bg-gray-100 dark:bg-gray-700 p-4 rounded-md text-gray-800 dark:text-gray-200 mb-4"></div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeOptimizerModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 rounded-md" data-lang-key="keepOriginal">Keep Original</button>
+                <button id="use-optimized-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md" data-lang-key="useThisVersion">Use this Version</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12 px-4 sm:px-6 lg:px-8">
+         <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="mb-6 md:mb-0">
+                    <a href="#" onclick="showPage('home-page', event)" class="flex items-center mb-4">
+                       <img src="https://i.ibb.co/tptYSRk3/Excuxziv-no-back.png" alt="Excluziv Logo" class="h-10 w-auto" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/100x40/374151/ffffff?text=Excluziv';">
+                    </a>
+                    <p class="text-gray-400" data-lang-key="heroDescription">
+                        Revolutionizing legal services with AI-powered technology to make legal expertise more accessible and efficient.
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4" data-lang-key="quickLinks">Quick Links</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" onclick="showPage('home-page', event)" class="text-gray-400 hover:text-white transition duration-300" data-lang-key="home">Home</a></li>
+                        <li><a href="#" onclick="showPage('about-page', event)" class="text-gray-400 hover:text-white transition duration-300" data-lang-key="about">About</a></li>
+                        <li><a href="#" onclick="showPage('blog-page', event)" class="text-gray-400 hover:text-white transition duration-300" data-lang-key="blog">Blog</a></li>
+                        <li><a href="#" onclick="showPage('team-page', event)" class="text-gray-400 hover:text-white transition duration-300" data-lang-key="team">Team</a></li>
+                         <li><a href="#" onclick="showPage('contact-page', event)" class="text-gray-400 hover:text-white transition duration-300" data-lang-key="contact">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4" data-lang-key="footerServices">Services</h4>
+                    <ul class="space-y-2">
+                        <li class="text-gray-400" data-lang-key="service1Title">AI Legal Assistant</li>
+                        <li class="text-gray-400" data-lang-key="service2Title">Document Automation</li>
+                        <li class="text-gray-400" data-lang-key="service3Title">Case Analysis</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4" data-lang-key="footerConnect">Connect</h4>
+                     <div class="space-y-3 mb-4">
+                        <p class="text-gray-400 flex items-center"><i class="fas fa-envelope mr-2"></i><a href="mailto:work.excluziv@gmail.com" class="hover:text-white transition">work.excluziv@gmail.com</a></p>
+                        <p class="text-gray-400 flex items-center"><i class="fas fa-phone-alt mr-2"></i>+91-7974702342</p>
+                    </div>
+                    <div class="flex space-x-4">
+                        <a href="https://www.linkedin.com/company/excluziv-news" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-white transition duration-300 text-2xl flex items-center">
+                            <i class="fab fa-linkedin"></i><span class="ml-2">Excluziv</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p><span data-lang-key="footerRights">&copy; 2024 Excluziv. All rights reserved.</span> | <a href="#" class="hover:text-white" data-lang-key="privacyPolicy">Privacy Policy</a> | <a href="#" class="hover:text-white" data-lang-key="termsOfService">Terms of Service</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- Blog Post Data ---
+        const blogPosts = [
+            {
+                id: 1,
+                image: "https://images.unsplash.com/photo-1556742049-0cfed3f6b3a6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "Jan 10, 2025",
+                category: "LegalTech",
+            },
+            {
+                id: 2,
+                image: "https://images.unsplash.com/photo-1678483747979-9921683457a3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "Feb 05, 2025",
+                category: "AI in Law",
+            },
+            {
+                id: 3,
+                image: "https://images.unsplash.com/photo-1556155092-490a1ba16284?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "Mar 12, 2025",
+                category: "Automation",
+            },
+            {
+                id: 4,
+                image: "https://images.unsplash.com/photo-1504711331083-90a78131340d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "Apr 02, 2025",
+                category: "Compliance",
+            },
+            {
+                id: 5,
+                image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "Apr 28, 2025",
+                category: "AI Ethics",
+            },
+            {
+                id: 6,
+                image: "https://images.unsplash.com/photo-1665686306574-1ace09918530?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "May 15, 2025",
+                category: "Analytics",
+            },
+            {
+                id: 7,
+                image: "https://images.unsplash.com/photo-1589998059171-988d887df646?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "June 01, 2025",
+                category: "Document Review",
+            },
+            {
+                id: 8,
+                image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+                date: "June 18, 2025",
+                category: "Future of Law",
+            }
+        ];
+
+        // --- Translations ---
+         const translations = {
+            en: {
+                home: "Home", about: "About", blog: "Blog", team: "Team", tools: "Tools", contact: "Contact",
+                tryAiAssistant: "Try AI Assistant",
+                tryAiAssistantFree: "Try AI Assistant for FREE",
+                logout: "Logout",
+                confirmLogoutTitle: "Confirm Logout", confirmLogoutText: "Are you sure you want to log out?",
+                cancel: "Cancel", yesLogout: "Yes, Logout",
+                disclaimerTitle: "Important Disclaimer", 
+                disclaimerText: "AI can make mistakes. The information provided is for educational purposes only. Please seek professional legal advice for any serious matters.",
+                okUnderstand: "OK, I Understand",
+                authFailedError: "Authentication failed. Please try again.",
+                guestLoginFailedError: "Guest login failed. Please try again.",
+                heroTitle: "Revolutionizing Legal Services with",
+                heroSubtitle: "AI Technology",
+                heroDescription: "Excluziv provides cutting-edge legal-tech solutions to streamline your legal processes and enhance efficiency with artificial intelligence.",
+                learnMore: "Learn More",
+                servicesTitle: "Our Services",
+                servicesDescription: "We offer comprehensive legal-tech solutions tailored to your specific needs.",
+                service1Title: "AI Legal Assistant",
+                service1Description: "Our AI-powered assistant provides instant answers to legal questions, helping you navigate complex legal matters with ease.",
+                service2Title: "Document Automation",
+                service2Description: "Generate legal documents in minutes with our smart templates that adapt to your specific requirements.",
+                service3Title: "Contract Review & Analysis",
+                service3Description: "Leverage AI to analyze contracts, identify risks, and ensure compliance with legal standards.",
+                service4Title: "Discovery Document Analyzer",
+                service4Description: "Efficiently sift through large volumes of discovery documents to find key evidence and insights.",
+                service5Title: "Compliance Checker",
+                service5Description: "Automatically audit documents and business processes against regulatory checklists to ensure compliance.",
+                service6Title: "GDPR Privacy Services",
+                service6Description: "Assess and manage your data privacy obligations under GDPR and other data protection regulations.",
+                testimonialsTitle: "What Our Clients Say",
+                testimonialsDescription: "Trusted by legal professionals and businesses worldwide.",
+                testimonial1: `"Excluziv's AI assistant has transformed how we handle client inquiries. It's like having an extra associate available 24/7."`,
+                testimonial2: `"The document automation tool has saved us hundreds of hours. The accuracy and customization options are impressive."`,
+                testimonial3: `"As a solo practitioner, Excluziv's tools have leveled the playing field for me. I can compete with much larger firms now."`,
+                submitQueryTitle: "Submit Your Query",
+                submitQueryDescription: "Have a question? Fill out the form below and we'll get back to you.",
+                submitInquiry: "Submit Your Inquiry",
+                aboutTitle: "About Excluziv",
+                aboutText1: "Excluziv is your strategic partner at the intersection of cryptocurrency, AI regulations, and business compliance.",
+                aboutText2: "We specialize in helping startups and growth-stage companies decode complex regulatory frameworks, ensuring they stay compliant while scaling globally. From navigating the shifting terrain of crypto regulations to implementing AI-driven legal and compliance solutions, we deliver clarity where it matters most.",
+                aboutText3: "Whether you're launching a Web3 product, integrating AI into your operations, or simply want to future-proof your compliance strategy — Excluziv equips you with the insights and tools to lead with confidence.",
+                coreOfferingsTitle: "Our Core Offerings",
+                offering1: "Regulatory intelligence on global crypto and AI frameworks",
+                offering2: "Compliance consulting for startups, fintechs & tech firms",
+                offering3: "Custom AI solutions for legal research, contract reviews & risk assessment",
+                offering4: "In-depth business case studies and strategic analysis",
+                offering5: "High-impact content tailored for founders, VCs & legal teams",
+                blogTitle: "Excluziv Blog",
+                blogDescription: "Insights, news, and perspectives on legal technology and AI",
+                readMore: "Read More →",
+                backToBlog: "← Back to Blog",
+                teamTitle: "Our Team",
+                teamMemberName: "Siddhant Tiwari",
+                teamMemberBio2: "A graduate of Damodaram Sanjivayya National Law University (2024) and master’s from National Law University, Odisha (2025), Siddhant brings a unique blend of legal acumen, business understanding, and AI expertise.<br><br>With a strong foundation in legal strategy and a passion for innovation, Siddhant offers a distinctive mix of legal knowledge, strategic insight, and content excellence.<br><br>An ardent believer in the power of AI to transform the legal industry, Siddhant has worked at the intersection of law, policy, and innovation—helping early-stage startups and companies navigate regulatory challenges with clarity and confidence.<br><br>📧 siddhant.tiwari.work@gmail.com<br>🔗 <a href='https://www.linkedin.com/in/siddhant-tiwari-law-2024-llm/' target='_blank' rel='noopener noreferrer' class='hover:underline'>LinkedIn</a>",
+                contactTitle: "Contact Us",
+                contactDescription: "Get in touch with our team to learn more about our solutions",
+                contactInfoTitle: "Contact Information",
+                phoneLabel: "Phone",
+                emailLabel: "Email",
+                connectWithUs: "Connect With Us",
+                sendMessageTitle: "Send Us a Message",
+                nameLabel: "Name",
+                subjectLabel: "Subject",
+                messageLabel: "Message",
+                sendMessageBtn: "Send Message",
+                quickLinks: "Quick Links",
+                footerServices: "Services",
+                footerConnect: "Connect",
+                footerRights: "© 2024 Excluziv. All rights reserved.",
+                privacyPolicy: "Privacy Policy",
+                termsOfService: "Terms of Service",
+                loginTitle: "Login to Excluziv",
+                loginDescription: "Sign in to save your history or continue as a guest.",
+                signInGoogle: "Sign in with Google",
+                signInGuest: "Continue as Guest",
+                toolsPageTitle: "Our AI Tools",
+                toolsPageDescription: "Select a tool to get started with our AI Legal Assistant.",
+                toolLegalDefinitions: "Legal Definitions",
+                toolCaseInsights: "Case Insights",
+                toolAiCaseSummary: "AI Case Summary",
+                toolDraftPetition: "Draft a Petition",
+                toolExplainNotice: "Explain a Notice",
+                toolDocGenerator: "Document Generator",
+                toolBareAct: "Bare Act Navigator",
+                toolCasePrediction: "Case Outcome Prediction",
+                advancedTools: "Advanced Legal Tools",
+                toolDevilsAdvocate: "Devil's Advocate",
+                toolDocCompare: "Doc Compare",
+                toolStrategySim: "Strategy Simulator",
+                toolRegulatoryImpact: "Regulatory Impact",
+                toolStakeholder: "Stakeholder Dynamics",
+                toolContractIntel: "Contract Intelligence",
+                aiAssistantTitle: "Excluziv AI Legal Assistant",
+                aiAssistantSubtitle: "Your copilot for navigating the complexities of Indian law.",
+                selectMode: "1. Select Your Mode",
+                basicMode: "Basic Mode",
+                basicModeDesc: "Short, clear answers for quick FAQs.",
+                proMode: "Pro Mode",
+                proModeDesc: "Detailed explanations & draft-level output.",
+                chooseTool: "Choose a Tool",
+                copy: "Copy",
+                redo: "Redo",
+                historyTitle: "AI Assistant History",
+                historyPlaceholder: "No history yet. Ask the AI assistant a question to get started.",
+                faqTitle: "Frequently Asked Questions",
+                faq1Title: "Is the AI assistant a replacement for a lawyer?",
+                faq1Answer: "No. The Excluziv AI Assistant is a tool for informational and educational purposes only. It is not a substitute for professional legal advice from a qualified lawyer. For critical legal matters, always consult with a human legal expert.",
+                faq2Title: "How accurate is the information provided?",
+                faq2Answer: "Our AI models are trained on a vast corpus of Indian legal documents, case law, and statutes. While we strive for high accuracy, the legal landscape is constantly evolving. The information should be verified and used as a starting point, not as a final, definitive source.",
+                faq3Title: "What's the difference between Basic and Pro mode?",
+                faq3Answer: "<b>Basic Mode</b> is designed for quick, easy-to-understand answers to straightforward questions. <b>Pro Mode</b> leverages more advanced reasoning to provide detailed explanations, analyze context from your input, and generate comprehensive draft-level documents. Think of it as the difference between a quick summary and a detailed report.",
+                faq4Title: "Is my data safe?",
+                faq4Answer: "We take your privacy seriously. If you sign in with Google, we only use your email for authentication and to save your history. We do not sell your data. Anonymous guest users have their history stored locally on their device and it is not sent to our servers.",
+                faq5Title: "Can I save my chat history?",
+                faq5Answer: "Yes, your conversation history is automatically saved to your account if you sign in with Google. This allows you to continue your sessions across different devices. If you use the guest mode, your history is only saved on the browser you are currently using and will be lost if you clear your browser data.",
+                aiQueryPlaceholder: "Place Your Query Here (Kuch bura nahi hoga, vishwas karo)",
+                optimizerTitle: "Optimized Prompt",
+                optimizerDescription: "We’ve improved your prompt for clarity and better results. Use it as is or keep editing!",
+                keepOriginal: "Keep Original",
+                useThisVersion: "Use this Version",
+                 optimizerRecommendation: "For better results, try our ✨ Prompt Optimizer before you submit!",
+                 // Blog post titles and descriptions for the main blog page
+                "blog1_title": "Beyond the Hype: The Real Impact of LegalTech on Modern Law Firms",
+                "blog1_desc": "Explore how LegalTech is moving beyond buzzwords to deliver tangible value, reshaping client services, and defining the future of legal practice.",
+                "blog2_title": "AI as a Co-Pilot: How Artificial Intelligence is Redefining the Role of Lawyers",
+                "blog2_desc": "Discover how AI is not replacing lawyers but augmenting their abilities, acting as a powerful co-pilot for research, analysis, and strategy.",
+                "blog3_title": "From Draft to Digital: The Unstoppable Rise of Contract Automation",
+                "blog3_desc": "Learn how automating the contract lifecycle is revolutionizing efficiency, reducing risk, and freeing up legal professionals for higher-value work.",
+                "blog4_title": "Staying Ahead of the Curve: Leveraging AI for Proactive Legal Compliance",
+                "blog4_desc": "Move from reactive to proactive compliance. See how AI tools can monitor regulatory changes and ensure your organization remains compliant.",
+                "blog5_title": "The Digital Gavel: Navigating the Ethical Maze of AI in Legal Services",
+                "blog5_desc": "A deep dive into the critical ethical questions surrounding AI in law, from algorithmic bias to client confidentiality and the duty of competence.",
+                "blog6_title": "Crystal Ball or Calculated Risk? The Power of Predictive Analytics in Law",
+                "blog6_desc": "Uncover how data-driven insights are forecasting case outcomes, informing litigation strategy, and providing a competitive edge.",
+                "blog7_title": "The End of Due Diligence as We Know It: AI-Powered Document Review is Here",
+                "blog7_desc": "Examine the technology that is transforming document review from a manual slog into a fast, accurate, and insightful automated process.",
+                "blog8_title": "The AI-Enhanced Attorney: Charting the Future of Legal Consultancy",
+                "blog8_desc": "What does the law firm of the future look like? Explore the new business models and skill sets required to thrive in the AI era."
+            },
+            hi: {
+                home: "होम", about: "हमारे बारे में", blog: "ब्लॉग", team: "टीम", tools: "टूल्स", contact: "संपर्क",
+                tryAiAssistant: "एआई सहायक आज़माएँ",
+                tryAiAssistantFree: "एआई सहायक मुफ़्त में आज़माएँ",
+                logout: "लॉग आउट",
+                confirmLogoutTitle: "लॉगआउट की पुष्टि करें", confirmLogoutText: "क्या आप वाकई लॉग आउट करना चाहते हैं?",
+                cancel: "रद्द करें", yesLogout: "हाँ, लॉग आउट करें",
+                disclaimerTitle: "महत्वपूर्ण अस्वीकरण", 
+                disclaimerText: "एआई गलतियाँ कर सकता है। प्रदान की गई जानकारी केवल शैक्षिक उद्देश्यों के लिए है। कृपया किसी भी गंभीर मामले के लिए पेशेवर कानूनी सलाह लें।",
+                okUnderstand: "ठीक है, मैं समझ गया",
+                authFailedError: "प्रमाणीकरण विफल। कृपया पुन: प्रयास करें।",
+                guestLoginFailedError: "अतिथि लॉगिन विफल। कृपया पुन: प्रयास करें।",
+                heroTitle: "कानूनी सेवाओं में क्रांति ला रहा है",
+                heroSubtitle: "एआई तकनीक",
+                heroDescription: "एक्सक्लुसिव आपकी कानूनी प्रक्रियाओं को सुव्यवस्थित करने और कृत्रिम बुद्धिमत्ता के साथ दक्षता बढ़ाने के लिए अत्याधुनिक कानूनी-तकनीकी समाधान प्रदान करता है।",
+                learnMore: "और जानें",
+                servicesTitle: "हमारी सेवाएँ",
+                servicesDescription: "हम आपकी विशिष्ट आवश्यकताओं के अनुरूप व्यापक कानूनी-तकनीकी समाधान प्रदान करते हैं।",
+                service1Title: "एआई कानूनी सहायक",
+                service1Description: "हमारा एआई-संचालित सहायक कानूनी सवालों के तुरंत जवाब देता है, जिससे आपको जटिल कानूनी मामलों को आसानी से नेविगेट करने में मदद मिलती है।",
+                service2Title: "दस्तावेज़ स्वचालन",
+                service2Description: "हमारे स्मार्ट टेम्प्लेट के साथ मिनटों में कानूनी दस्तावेज़ तैयार करें जो आपकी विशिष्ट आवश्यकताओं के अनुकूल हों।",
+                service3Title: "अनुबंध समीक्षा और विश्लेषण",
+                service3Description: "अनुबंधों का विश्लेषण करने, जोखिमों की पहचान करने और कानूनी मानकों का अनुपालन सुनिश्चित करने के लिए एआई का लाभ उठाएं।",
+                service4Title: "डिस्कवरी दस्तावेज़ विश्लेषक",
+                service4Description: "प्रमुख साक्ष्य और अंतर्दृष्टि खोजने के लिए बड़ी मात्रा में खोज दस्तावेजों को कुशलतापूर्वक छानें।",
+                service5Title: "अनुपालन परीक्षक",
+                service5Description: "अनुपालन सुनिश्चित करने के लिए नियामक जांच सूचियों के विरुद्ध दस्तावेजों और व्यावसायिक प्रक्रियाओं का स्वचालित रूप से ऑडिट करें।",
+                service6Title: "जीडीपीआर गोपनीयता सेवाएं",
+                service6Description: "जीडीपीआर और अन्य डेटा सुरक्षा नियमों के तहत अपने डेटा गोपनीयता दायित्वों का आकलन और प्रबंधन करें।",
+                testimonialsTitle: "हमारे ग्राहक क्या कहते हैं",
+                testimonialsDescription: "दुनिया भर के कानूनी पेशेवरों और व्यवसायों द्वारा विश्वसनीय।",
+                testimonial1: `"एक्सक्लुसिव के एआई सहायक ने हमारे क्लाइंट पूछताछ को संभालने के तरीके को बदल दिया है। यह 24/7 एक अतिरिक्त सहयोगी होने जैसा है।"`,
+                testimonial2: `"दस्तावेज़ स्वचालन उपकरण ने हमारे सैकड़ों घंटे बचाए हैं। सटीकता और अनुकूलन विकल्प प्रभावशाली हैं।"`,
+                testimonial3: `"एक एकल व्यवसायी के रूप में, एक्सक्लुसिव के उपकरणों ने मेरे लिए खेल का मैदान समतल कर दिया है। अब मैं बहुत बड़ी फर्मों के साथ प्रतिस्पर्धा कर सकता हूं।"`,
+                submitQueryTitle: "अपनी क्वेरी सबमिट करें",
+                submitQueryDescription: "कोई सवाल है? नीचे दिया गया फ़ॉर्म भरें और हम आपसे संपर्क करेंगे।",
+                submitInquiry: "अपनी पूछताछ सबमिट करें",
+                aboutTitle: "एक्सक्लुसिव के बारे में",
+                aboutText1: "एक्सक्लुसिव क्रिप्टोक्यूरेंसी, एआई नियमों और व्यावसायिक अनुपालन के चौराहे पर आपका रणनीतिक साझेदार है।",
+                aboutText2: "हम स्टार्टअप और विकास-चरण की कंपनियों को जटिल नियामक ढांचे को समझने में मदद करने में विशेषज्ञ हैं, यह सुनिश्चित करते हुए कि वे विश्व स्तर पर स्केलिंग करते समय अनुपालन करते हैं। क्रिप्टो नियमों के बदलते इलाके को नेविगेट करने से लेकर एआई-संचालित कानूनी और अनुपालन समाधानों को लागू करने तक, हम स्पष्टता प्रदान करते हैं जहां यह सबसे महत्वपूर्ण है।",
+                aboutText3: "चाहे आप एक वेब3 उत्पाद लॉन्च कर रहे हों, अपने संचालन में एआई को एकीकृत कर रहे हों, या बस अपनी अनुपालन रणनीति को भविष्य के लिए सुरक्षित करना चाहते हों - एक्सक्लुसिव आपको आत्मविश्वास के साथ नेतृत्व करने के लिए अंतर्दृष्टि और उपकरणों से लैस करता है।",
+                coreOfferingsTitle: "हमारी मुख्य पेशकशें",
+                offering1: "वैश्विक क्रिप्टो और एआई ढांचे पर विनियामक खुफिया जानकारी",
+                offering2: "स्टार्टअप, फिनटेक और तकनीकी फर्मों के लिए अनुपालन परामर्श",
+                offering3: "कानूनी अनुसंधान, अनुबंध समीक्षा और जोखिम मूल्यांकन के लिए कस्टम एआई समाधान",
+                offering4: "गहन व्यावसायिक केस स्टडी और रणनीतिक विश्लेषण",
+                offering5: "संस्थापकों, वीसी और कानूनी टीमों के लिए तैयार की गई उच्च-प्रभाव वाली सामग्री",
+                blogTitle: "एक्सक्लुसिव ब्लॉग",
+                blogDescription: "कानूनी प्रौद्योगिकी और एआई पर अंतर्दृष्टि, समाचार और दृष्टिकोण",
+                readMore: "और पढ़ें →",
+                backToBlog: "← ब्लॉग पर वापस जाएं",
+                teamTitle: "हमारी टीम",
+                teamMemberName: "सिद्धांत तिवारी",
+                teamMemberBio2: "दामोदरम संजीवय्या नेशनल लॉ यूनिवर्सिटी (2024) से स्नातक और नेशनल लॉ यूनिवर्सिटी, ओडिशा (2025) से मास्टर, सिद्धांत कानूनी कौशल, व्यावसायिक समझ और एआई विशेषज्ञता का एक अनूठा मिश्रण लेकर आए हैं।<br><br>कानूनी रणनीति में एक मजबूत नींव और नवाचार के लिए जुनून के साथ, सिद्धांत कानूनी ज्ञान, रणनीतिक अंतर्दृष्टि और सामग्री उत्कृष्टता का एक विशिष्ट मिश्रण प्रदान करता है।<br><br>कानूनी उद्योग को बदलने के लिए एआई की शक्ति में एक उत्साही विश्वास रखने वाले, सिद्धांत ने कानून, नीति और नवाचार के चौराहे पर काम किया है - जिससे शुरुआती चरण के स्टार्टअप और कंपनियों को स्पष्टता और आत्मविश्वास के साथ नियामक चुनौतियों का सामना करने में मदद मिलती है।<br><br>📧 siddhant.tiwari.work@gmail.com<br>🔗 <a href='https://www.linkedin.com/in/siddhant-tiwari-law-2024-llm/' target='_blank' rel='noopener noreferrer' class='hover:underline'>लिंक्डइन</a>",
+                contactTitle: "हमसे संपर्क करें",
+                contactDescription: "हमारे समाधानों के बारे में अधिक जानने के लिए हमारी टीम से संपर्क करें",
+                contactInfoTitle: "संपर्क जानकारी",
+                phoneLabel: "फ़ोन",
+                emailLabel: "ईमेल",
+                connectWithUs: "हमसे जुड़ें",
+                sendMessageTitle: "हमें एक संदेश भेजें",
+                nameLabel: "नाम",
+                subjectLabel: "विषय",
+                messageLabel: "संदेश",
+                sendMessageBtn: "संदेश भेजें",
+                quickLinks: "त्वरित लिंक्स",
+                footerServices: "सेवाएं",
+                footerConnect: "जुडिये",
+                footerRights: "© 2024 एक्सक्लुसिव। सर्वाधिकार सुरक्षित।",
+                privacyPolicy: "गोपनीयता नीति",
+                termsOfService: "सेवा की शर्तें",
+                loginTitle: "एक्सक्लुसिव में लॉगिन करें",
+                loginDescription: "अपना इतिहास सहेजने के लिए साइन इन करें या अतिथि के रूप में जारी रखें।",
+                signInGoogle: "Google से साइन इन करें",
+                signInGuest: "अतिथि के रूप में जारी रखें",
+                toolsPageTitle: "हमारे एआई उपकरण",
+                toolsPageDescription: "हमारे एआई कानूनी सहायक के साथ आरंभ करने के लिए एक उपकरण चुनें।",
+                toolLegalDefinitions: "कानूनी परिभाषाएं",
+                toolCaseInsights: "केस अंतर्दृष्टि",
+                toolAiCaseSummary: "एआई केस सारांश",
+                toolDraftPetition: "याचिका का मसौदा तैयार करें",
+                toolExplainNotice: "एक नोटिस समझाओ",
+                toolDocGenerator: "दस्तावेज़ जेनरेटर",
+                toolBareAct: "बेयर एक्ट नेविगेटर",
+                toolCasePrediction: "केस परिणाम की भविष्यवाणी",
+                advancedTools: "उन्नत कानूनी उपकरण",
+                toolDevilsAdvocate: "डेविल्स एडवोकेट",
+                toolDocCompare: "दस्तावेज़ तुलना",
+                toolStrategySim: "रणनीति सिम्युलेटर",
+                toolRegulatoryImpact: "नियामक प्रभाव",
+                toolStakeholder: "हितधारक गतिशीलता",
+                toolContractIntel: "अनुबंध इंटेलिजेंस",
+                aiAssistantTitle: "एक्सक्लुसिव एआई कानूनी सहायक",
+                aiAssistantSubtitle: "भारतीय कानून की जटिलताओं को समझने के लिए आपका सह-पायलट।",
+                selectMode: "1. अपना मोड चुनें",
+                basicMode: "बेसिक मोड",
+                basicModeDesc: "त्वरित एफएक्यू के लिए छोटे, स्पष्ट उत्तर।",
+                proMode: "प्रो मोड",
+                proModeDesc: "विस्तृत स्पष्टीकरण और ड्राफ्ट-स्तरीय आउटपुट।",
+                chooseTool: "एक उपकरण चुनें",
+                copy: "कॉपी",
+                redo: "फिर से करें",
+                historyTitle: "एआई सहायक इतिहास",
+                historyPlaceholder: "अभी तक कोई इतिहास नहीं ਹੈ। आरंभ करने के लिए एआई सहायक से एक प्रश्न पूछें।",
+                faqTitle: "अक्सर पूछे जाने वाले प्रश्न",
+                faq1Title: "क्या एआई सहायक एक वकील का विकल्प है?",
+                faq1Answer: "नहीं। एक्सक्लुसिव एआई सहायक केवल सूचनात्मक और शैक्षिक उद्देश्यों के लिए एक उपकरण है। यह एक योग्य वकील से पेशेवर कानूनी सलाह का विकल्प नहीं है। महत्वपूर्ण कानूनी मामलों के लिए, हमेशा एक मानव कानूनी विशेषज्ञ से परामर्श करें।",
+                faq2Title: "प्रदान की गई जानकारी कितनी सटीक है?",
+                faq2Answer: "हमारे एआई मॉडल को भारतीय कानूनी दस्तावेजों, केस कानून और विधियों के एक विशाल कोष पर प्रशिक्षित किया जाता है। जबकि हम उच्च सटीकता के लिए प्रयास करते हैं, कानूनी परिदृश्य लगातार विकसित हो रहा है। जानकारी को सत्यापित किया जाना चाहिए और एक प्रारंभिक बिंदु के रूप में उपयोग किया जाना चाहिए, न कि अंतिम, निश्चित स्रोत के रूप में।",
+                faq3Title: "बेसिक और प्रो मोड में क्या अंतर है?",
+                faq3Answer: "<b>बेसिक मोड</b> सीधे सवालों के त्वरित, आसानी से समझने वाले उत्तरों के लिए डिज़ाइन किया गया है। <b>प्रो मोड</b> विस्तृत स्पष्टीकरण प्रदान करने, आपके इनपुट से संदर्भ का विश्लेषण करने और व्यापक ड्राफ्ट-स्तरीय दस्तावेज़ बनाने के लिए अधिक उन्नत तर्क का लाभ उठाता है। इसे एक त्वरित सारांश और एक विस्तृत रिपोर्ट के बीच के अंतर के रूप में सोचें।",
+                faq4Title: "क्या मेरा डेटा सुरक्षित है?",
+                faq4Answer: "हम आपकी गोपनीयता को गंभीरता से लेते हैं। यदि आप Google से साइन इन करते हैं, तो हम आपके ईमेल का उपयोग केवल प्रमाणीकरण और आपका इतिहास सहेजने के लिए करते हैं। हम आपका डेटा नहीं बेचते हैं। अनाम अतिथि उपयोगकर्ताओं का इतिहास उनके डिवाइस पर स्थानीय रूप से संग्रहीत होता है और हमारे सर्वर पर नहीं भेजा जाता है।",
+                faq5Title: "क्या मैं अपनी चैट हिस्ट्री सेव कर सकता हूँ?",
+                faq5Answer: "हाँ, यदि आप Google से साइन इन करते हैं तो आपकी बातचीत का इतिहास स्वचालित रूप से आपके खाते में सहेज लिया जाता है। यह आपको विभिन्न उपकरणों पर अपने सत्र जारी रखने की अनुमति देता है। यदि आप अतिथि मोड का उपयोग करते हैं, तो आपका इतिहास केवल आपके द्वारा उपयोग किए जा रहे ब्राउज़र पर सहेजा जाता है और यदि आप अपना ब्राउज़र डेटा साफ़ करते हैं तो यह खो जाएगा।",
+                aiQueryPlaceholder: "अपनी क्वेरी यहाँ रखें (कुछ बुरा नहीं होगा, विश्वास करो)",
+                optimizerTitle: "अनुकूलित प्रॉम्प्ट",
+                optimizerDescription: "हमने स्पष्टता और बेहतर परिणामों के लिए आपके प्रॉम्प्ट में सुधार किया है। इसका उपयोग वैसे ही करें या संपादन करते रहें!",
+                keepOriginal: "मूल रखें",
+                useThisVersion: "इस संस्करण का उपयोग करें",
+                // Blog post titles and descriptions for the main blog page
+                "blog1_title": "प्रचार से परे: आधुनिक कानूनी फर्मों पर लीगलटेक का वास्तविक प्रभाव",
+                "blog1_desc": "अन्वेषण करें कि कैसे लीगलटेक वास्तविक मूल्य प्रदान करने, ग्राहक सेवाओं को फिर से आकार देने और कानूनी अभ्यास के भविष्य को परिभाषित करने के लिए चर्चा से आगे बढ़ रहा है।",
+                "blog2_title": "सह-पायलट के रूप में एआई: कैसे कृत्रिम बुद्धिमत्ता वकीलों की भूमिका को फिर से परिभाषित कर रही है",
+                "blog2_desc": "खोजें कि कैसे एआई वकीलों की जगह नहीं ले रहा है, बल्कि उनकी क्षमताओं को बढ़ा रहा है, अनुसंधान, विश्लेषण और रणनीति के लिए एक शक्तिशाली सह-पायलट के रूप में कार्य कर रहा है।",
+                "blog3_title": "ड्राफ्ट से डिजिटल तक: अनुबंध स्वचालन का अजेय उदय",
+                "blog3_desc": "जानें कि कैसे अनुबंध जीवनचक्र को स्वचालित करना दक्षता में क्रांति ला रहा है, जोखिम कम कर रहा है, और कानूनी पेशेवरों को उच्च-मूल्य वाले काम के लिए मुक्त कर रहा है।",
+                "blog4_title": "सबसे आगे रहना: सक्रिय कानूनी अनुपालन के लिए एआई का लाभ उठाना",
+                "blog4_desc": "प्रतिक्रियाशील से सक्रिय अनुपालन की ओर बढ़ें। देखें कि कैसे एआई उपकरण नियामक परिवर्तनों की निगरानी कर सकते हैं और सुनिश्चित कर सकते हैं कि आपका संगठन अनुपालन बना रहे।",
+                "blog5_title": "डिजिटल गैवेल: कानूनी सेवाओं में एआई की नैतिक भूलभुलैया को नेविगेट करना",
+                "blog5_desc": "एल्गोरिदमिक पूर्वाग्रह से लेकर ग्राहक गोपनीयता और क्षमता के कर्तव्य तक, कानून में एआई के आसपास के महत्वपूर्ण नैतिक प्रश्नों में एक गहरा गोता।",
+                "blog6_title": "क्रिस्टल बॉल या परिकलित जोखिम? कानून में भविष्य कहनेवाला विश्लेषिकी की शक्ति",
+                "blog6_desc": "उजागर करें कि कैसे डेटा-संचालित अंतर्दृष्टि मामले के परिणामों का पूर्वानुमान लगा रही है, मुकदमेबाजी की रणनीति को सूचित कर रही है, और एक प्रतिस्पर्धी बढ़त प्रदान कर रही है।",
+                "blog7_title": "जैसा कि हम जानते हैं, उचित परिश्रम का अंत: एआई-संचालित दस्तावेज़ समीक्षा यहाँ है",
+                "blog7_desc": "उस तकनीक की जांच करें जो दस्तावेज़ समीक्षा को एक मैनुअल परिश्रम से एक तेज़, सटीक और अंतर्दृष्टिपूर्ण स्वचालित प्रक्रिया में बदल रही है।",
+                "blog8_title": "एआई-एन्हांस्ड अटॉर्नी: कानूनी परामर्श के भविष्य का चार्टिंग",
+                "blog8_desc": "भविष्य की कानूनी फर्म कैसी दिखती है? एआई युग में पनपने के लिए आवश्यक नए व्यापार मॉडल और कौशल सेट का अन्वेषण करें।"
+            }
+        };
+
+        const blogTranslations = {
+            blog1: {
+                en: {
+                    title: "Beyond the Hype: The Real Impact of LegalTech on Modern Law Firms",
+                    p1: "For years, 'LegalTech' has been a buzzword, often associated with futuristic concepts and ambitious promises. However, the dust is settling, and we are now entering an era of tangible impact. Legal technology is no longer just about digitizing documents; it's about fundamentally re-engineering the processes, strategies, and client service models of modern law firms. This shift is moving the industry from a state of cautious curiosity to one of strategic adoption, where the firms that embrace technology are gaining a significant competitive edge.",
+                    h2_1: "Redefining Efficiency in Legal Operations",
+                    p2: "The most immediate impact of LegalTech is the radical improvement in operational efficiency. Tedious, time-consuming tasks that once consumed countless billable hours are now being automated with remarkable precision. AI-powered document review tools can sift through thousands of pages in minutes, identifying relevant clauses and potential risks far faster than any human team. Similarly, contract lifecycle management (CLM) platforms automate everything from drafting and negotiation to execution and renewal, minimizing errors and ensuring that deadlines are never missed. This automation doesn't just save time; it frees up legal professionals to focus on high-value, strategic work—advising clients, crafting arguments, and negotiating complex deals.",
+                    h2_2: "Democratizing Access to Legal Services",
+                    p3: "LegalTech is also playing a crucial role in bridging the justice gap. Online platforms now offer affordable legal services, from company formation to drafting standard legal documents, making legal help accessible to startups, small businesses, and individuals who were previously priced out of the market. AI-powered chatbots can provide initial legal guidance, helping people understand their rights and the legal options available to them. This democratization of services is not only expanding the market but also forcing traditional law firms to rethink their pricing models and service delivery to remain competitive.",
+                    h2_3: "Data-Driven Decision Making",
+                    p4: "Perhaps the most transformative aspect of LegalTech is the advent of data-driven lawyering. Legal analytics platforms can analyze vast datasets of case law to predict litigation outcomes, identify winning arguments, and even evaluate the performance of judges. This allows lawyers to move beyond intuition and precedent, basing their strategies on robust statistical evidence. For corporate clients, this means more predictable legal spend and better risk management. For law firms, it means a more strategic, evidence-based approach to winning cases and advising clients.",
+                    h2_4: "The Challenges Ahead: Integration and Ethics",
+                    p5: "Despite the immense potential, the path of LegalTech adoption is not without its challenges. Integrating new technologies into established workflows requires significant investment in training and change management. There are also critical ethical considerations to navigate. How do we ensure that AI algorithms are free from bias? How do we protect client confidentiality in an age of cloud-based platforms and data analytics? Firms must address these questions proactively, developing robust governance frameworks to ensure that technology is used responsibly and ethically.",
+                    p6: "The future of law is inextricably linked with technology. The firms that will thrive in this new landscape are not just those that adopt new tools, but those that cultivate a culture of innovation. They will be the ones who see technology not as a replacement for human expertise, but as a powerful amplifier of it. LegalTech is no longer a niche interest; it is a core component of modern legal practice, and its real impact is only just beginning to unfold."
+                },
+                hi: {
+                    title: "प्रचार से परे: आधुनिक कानूनी फर्मों पर लीगलटेक का वास्तविक प्रभाव",
+                    p1: "वर्षों से, 'लीगलटेक' एक चर्चा का विषय रहा है, जो अक्सर भविष्य की अवधारणाओं और महत्वाकांक्षी वादों से जुड़ा होता है। हालाँकि, अब धूल जम रही है, और हम अब एक ठोस प्रभाव के युग में प्रवेश कर रहे हैं। कानूनी तकनीक अब केवल दस्तावेजों को डिजिटल बनाने के बारे में नहीं है; यह आधुनिक कानूनी फर्मों की प्रक्रियाओं, रणनीतियों और ग्राहक सेवा मॉडल को मौलिक रूप से फिर से इंजीनियरिंग करने के बारे में है। यह बदलाव उद्योग को सतर्क जिज्ञासा की स्थिति से रणनीतिक अपनाने की स्थिति में ले जा रहा है, जहाँ प्रौद्योगिकी को अपनाने वाली फर्में एक महत्वपूर्ण प्रतिस्पर्धी बढ़त हासिल कर रही हैं।",
+                    h2_1: "कानूनी संचालन में दक्षता को फिर से परिभाषित करना",
+                    p2: "लीगलटेक का सबसे तात्कालिक प्रभाव परिचालन दक्षता में क्रांतिकारी सुधार है। थकाऊ, समय लेने वाले कार्य जो कभी अनगिनत बिल योग्य घंटे खाते थे, अब उल्लेखनीय सटीकता के साथ स्वचालित हो रहे हैं। एआई-संचालित दस्तावेज़ समीक्षा उपकरण हजारों पृष्ठों को मिनटों में छान सकते हैं, प्रासंगिक खंडों और संभावित जोखिमों की पहचान किसी भी मानव टीम की तुलना में बहुत तेजी से कर सकते हैं। इसी तरह, अनुबंध जीवनचक्र प्रबंधन (सीएलएम) प्लेटफॉर्म ड्राफ्टिंग और बातचीत से लेकर निष्पादन और नवीनीकरण तक सब कुछ स्वचालित करते हैं, त्रुटियों को कम करते हैं और यह सुनिश्चित करते हैं कि समय सीमा कभी न छूटे। यह स्वचालन केवल समय नहीं बचाता है; यह कानूनी पेशेवरों को उच्च-मूल्य, रणनीतिक कार्य पर ध्यान केंद्रित करने के लिए मुक्त करता है - ग्राहकों को सलाह देना, तर्क तैयार करना और जटिल सौदों पर बातचीत करना।",
+                    h2_2: "कानूनी सेवाओं तक पहुंच का लोकतंत्रीकरण",
+                    p3: "लीगलटेक न्याय के अंतर को पाटने में भी महत्वपूर्ण भूमिका निभा रहा है। ऑनलाइन प्लेटफॉर्म अब कंपनी गठन से लेकर मानक कानूनी दस्तावेजों का मसौदा तैयार करने तक, सस्ती कानूनी सेवाएं प्रदान करते हैं, जिससे स्टार्टअप, छोटे व्यवसायों और उन व्यक्तियों के लिए कानूनी मदद सुलभ हो जाती है जो पहले बाजार से बाहर थे। एआई-संचालित चैटबॉट प्रारंभिक कानूनी मार्गदर्शन प्रदान कर सकते हैं, जिससे लोगों को उनके अधिकारों और उनके लिए उपलब्ध कानूनी विकल्पों को समझने में मदद मिलती है। सेवाओं का यह लोकतंत्रीकरण न केवल बाजार का विस्तार कर रहा है, बल्कि पारंपरिक कानूनी फर्मों को प्रतिस्पर्धी बने रहने के लिए अपने मूल्य निर्धारण मॉडल और सेवा वितरण पर पुनर्विचार करने के लिए भी मजबूर कर रहा है।",
+                    h2_3: "डेटा-संचालित निर्णय लेना",
+                    p4: "शायद लीगलटेक का सबसे परिवर्तनकारी पहलू डेटा-संचालित वकालत का आगमन है। कानूनी विश्लेषिकी प्लेटफॉर्म मुकदमेबाजी के परिणामों की भविष्यवाणी करने, जीतने वाले तर्कों की पहचान करने और यहां तक कि न्यायाधीशों के प्रदर्शन का मूल्यांकन करने के लिए केस कानून के विशाल डेटासेट का विश्लेषण कर सकते हैं। यह वकीलों को अंतर्ज्ञान और मिसाल से आगे बढ़ने की अनुमति देता है, जो मजबूत सांख्यिकीय सबूतों पर अपनी रणनीतियों को आधार बनाते हैं। कॉर्पोरेट ग्राहकों के लिए, इसका अर्थ है अधिक अनुमानित कानूनी खर्च और बेहतर जोखिम प्रबंधन। कानूनी फर्मों के लिए, इसका मतलब है कि मामलों को जीतने और ग्राहकों को सलाह देने के लिए एक अधिक रणनीतिक, साक्ष्य-आधारित दृष्टिकोण।",
+                    h2_4: "आगे की चुनौतियां: एकीकरण और नैतिकता",
+                    p5: "अपार क्षमता के बावजूद, लीगलटेक को अपनाने का मार्ग चुनौतियों से रहित नहीं है। स्थापित वर्कफ़्लो में नई तकनीकों को एकीकृत करने के लिए प्रशिक्षण और परिवर्तन प्रबंधन में महत्वपूर्ण निवेश की आवश्यकता होती है। नेविगेट करने के लिए महत्वपूर्ण नैतिक विचार भी हैं। हम यह कैसे सुनिश्चित करें कि एआई एल्गोरिदम पूर्वाग्रह से मुक्त हैं? हम क्लाउड-आधारित प्लेटफॉर्म और डेटा एनालिटिक्स के युग में ग्राहक की गोपनीयता की रक्षा कैसे करें? फर्मों को इन सवालों को सक्रिय रूप से संबोधित करना चाहिए, यह सुनिश्चित करने के लिए मजबूत शासन ढांचे का विकास करना चाहिए कि प्रौद्योगिकी का उपयोग जिम्मेदारी और नैतिक रूप से किया जाए।",
+                    p6: "कानून का भविष्य अविभाज्य रूप से प्रौद्योगिकी से जुड़ा हुआ है। इस नए परिदृश्य में पनपने वाली फर्में केवल वे नहीं हैं जो नए उपकरणों को अपनाती हैं, बल्कि वे हैं जो नवाचार की संस्कृति का पोषण करती हैं। वे वे होंगे जो प्रौद्योगिकी को मानव विशेषज्ञता के प्रतिस्थापन के रूप में नहीं, बल्कि इसके एक शक्तिशाली प्रवर्धक के रूप में देखते हैं। लीगलटेक अब एक विशिष्ट रुचि नहीं है; यह आधुनिक कानूनी अभ्यास का एक मुख्य घटक है, और इसका वास्तविक प्रभाव अभी सामने आना शुरू ही हुआ है।"
+                }
+            },
+            blog2: {
+                en: {
+                  title: "AI as a Co-Pilot: How Artificial Intelligence is Redefining the Role of Lawyers",
+                  p1: "The narrative of artificial intelligence in the legal profession has often been painted with broad strokes of dystopian fear: robots replacing lawyers, algorithms rendering human judgment obsolete. The reality, however, is far more nuanced and collaborative. AI is not emerging as a competitor to legal professionals but as a powerful co-pilot, an indispensable partner that augments human intellect, automates mundane tasks, and ultimately elevates the practice of law to new strategic heights.",
+                  h2_1: "From Manual Labor to Cognitive Partnership",
+                  p2: "Traditionally, a significant portion of a lawyer's time, especially in their early career, has been dedicated to labor-intensive tasks like document review, legal research, and due diligence. These activities, while necessary, are often repetitive and can detract from the more complex, analytical work that requires human insight. AI is systematically dismantling this old paradigm. Natural Language Processing (NLP) models can now read and understand legal texts with incredible speed and accuracy. They can summarize depositions, identify key clauses in contracts, and unearth relevant precedents from millions of court records in a matter of seconds. This frees lawyers from the drudgery of manual data collection and allows them to function as true strategists, focusing their energy on interpreting the AI's findings, developing case strategy, and providing nuanced client counsel.",
+                  h2_2: "Augmenting Legal Research and Analysis",
+                  p3: "Legal research is the bedrock of effective lawyering, but it has historically been a time-consuming process. AI-powered research platforms are changing the game. Instead of relying solely on keyword searches, lawyers can now ask complex legal questions in natural language and receive highly relevant, context-aware answers. These systems can identify thematic connections between cases, highlight dissenting opinions, and even trace the legislative history of a statute. This augmented research capability allows lawyers to build stronger, more comprehensive arguments faster than ever before. It's like having a team of tireless research associates available 24/7, ready to explore every possible angle of a legal issue.",
+                  h2_3: "The Rise of the 'Cyborg' Lawyer",
+                  p4: "The integration of AI is giving rise to a new breed of legal professional: the 'cyborg' lawyer. This is not a science-fiction character, but a tech-savvy attorney who seamlessly blends their own legal expertise with the computational power of AI. This lawyer understands how to formulate the right questions for the AI, how to critically evaluate its outputs, and how to translate data-driven insights into compelling legal arguments. They are adept at using predictive analytics to assess the risks of litigation, leveraging contract analysis tools to negotiate better deals, and using e-discovery platforms to uncover the 'smoking gun' evidence. This symbiotic relationship between human and machine is becoming the new standard for excellence in the legal field.",
+                  h2_4: "Embracing New Skills and a New Mindset",
+                  p5: "This evolution requires a shift in both skill set and mindset. Law schools and firms must adapt their training programs to include legal technology and data analytics. Lawyers need to develop a foundational understanding of how AI works, not to become programmers, but to be intelligent consumers of the technology. More importantly, the profession must move away from a model that primarily values hours billed and toward one that values efficiency, strategy, and results. The AI co-pilot handles the 'what'—the data, the precedents, the clauses. The human lawyer provides the 'so what'—the interpretation, the strategy, the ethical judgment, and the empathetic client relationship.",
+                  p6: "The fear of replacement is giving way to the excitement of enhancement. AI is not the end of the legal profession; it is the beginning of its most significant transformation. By embracing AI as a co-pilot, lawyers can offload the mundane, amplify their intelligence, and deliver faster, smarter, and more effective legal services than ever before. The future belongs to those who learn to fly with their new digital partners."
+                },
+                hi: {
+                    title: "सह-पायलट के रूप में एआई: कैसे कृत्रिम बुद्धिमत्ता वकीलों की भूमिका को फिर से परिभाषित कर रही है",
+                    p1: "कानूनी पेशे में कृत्रिम बुद्धिमत्ता की कहानी को अक्सर डायस्टोपियन डर के व्यापक स्ट्रोक के साथ चित्रित किया गया है: रोबोट वकीलों की जगह ले रहे हैं, एल्गोरिदम मानव निर्णय को अप्रचलित कर रहे हैं। हालांकि, वास्तविकता कहीं अधिक सूक्ष्म और सहयोगी है। एआई कानूनी पेशेवरों के प्रतियोगी के रूप में नहीं बल्कि एक शक्तिशाली सह-पायलट के रूप में उभर रहा है, एक अनिवार्य भागीदार जो मानव बुद्धि को बढ़ाता है, सांसारिक कार्यों को स्वचालित करता है, और अंततः कानून के अभ्यास को नई रणनीतिक ऊंचाइयों तक ले जाता है।",
+                    h2_1: "शारीरिक श्रम से संज्ञानात्मक साझेदारी तक",
+                    p2: "परंपरागत रूप से, एक वकील के समय का एक महत्वपूर्ण हिस्सा, विशेष रूप से उनके शुरुआती करियर में, दस्तावेज़ समीक्षा, कानूनी अनुसंधान और उचित परिश्रम जैसे श्रम-गहन कार्यों के लिए समर्पित किया गया है। ये गतिविधियाँ, आवश्यक होते हुए भी, अक्सर दोहरावदार होती हैं और अधिक जटिल, विश्लेषणात्मक कार्य से ध्यान भटका सकती हैं जिसके लिए मानव अंतर्दृष्टि की आवश्यकता होती है। एआई व्यवस्थित रूप से इस पुराने प्रतिमान को खत्म कर रहा है। प्राकृतिक भाषा प्रसंस्करण (एनएलपी) मॉडल अब अविश्वसनीय गति और सटीकता के साथ कानूनी ग्रंथों को पढ़ और समझ सकते हैं। वे बयान का सार कर सकते हैं, अनुबंधों में प्रमुख खंडों की पहचान कर सकते हैं, और सेकंडों में लाखों अदालती रिकॉर्ड से प्रासंगिक मिसालें निकाल सकते हैं। यह वकीलों को मैनुअल डेटा संग्रह की कठिनता से मुक्त करता है और उन्हें सच्चे रणनीतिकार के रूप में कार्य करने की अनुमति देता है, अपनी ऊर्जा को एआई के निष्कर्षों की व्याख्या करने, मामले की रणनीति विकसित करने और सूक्ष्म ग्राहक सलाह प्रदान करने पर केंद्रित करता है।",
+                    h2_2: "कानूनी अनुसंधान और विश्लेषण को बढ़ाना",
+                    p3: "कानूनी शोध प्रभावी वकालत का आधार है, लेकिन यह ऐतिहासिक रूप से एक समय लेने वाली प्रक्रिया रही है। एआई-संचालित अनुसंधान मंच खेल को बदल रहे हैं। केवल कीवर्ड खोजों पर निर्भर रहने के बजाय, वकील अब प्राकृतिक भाषा में जटिल कानूनी प्रश्न पूछ सकते हैं और अत्यधिक प्रासंगिक, संदर्भ-जागरूक उत्तर प्राप्त कर सकते हैं। ये प्रणालियाँ मामलों के बीच विषयगत संबंधों की पहचान कर सकती हैं, असहमतिपूर्ण रायों को उजागर कर सकती हैं, और यहाँ तक कि एक क़ानून के विधायी इतिहास का भी पता लगा सकती हैं। यह संवर्धित अनुसंधान क्षमता वकीलों को पहले से कहीं अधिक तेजी से मजबूत, अधिक व्यापक तर्क बनाने की अनुमति देती है। यह 24/7 अथक अनुसंधान सहयोगियों की एक टीम होने जैसा है, जो कानूनी मुद्दे के हर संभव कोण का पता लगाने के लिए तैयार हैं।",
+                    h2_3: "'साइबर' वकील का उदय",
+                    p4: "एआई के एकीकरण से एक नई नस्ल के कानूनी पेशेवर का उदय हो रहा है: 'साइबर' वकील। यह एक विज्ञान-कथा चरित्र नहीं है, बल्कि एक तकनीकी-प्रेमी वकील है जो अपनी कानूनी विशेषज्ञता को एआई की कम्प्यूटेशनल शक्ति के साथ मूल रूप से मिश्रित करता है। यह वकील समझता है कि एआई के लिए सही प्रश्न कैसे तैयार किए जाएं, इसके आउटपुट का गंभीर रूप से मूल्यांकन कैसे किया जाए, और डेटा-संचालित अंतर्दृष्टि को सम्मोहक कानूनी तर्कों में कैसे बदला जाए। वे मुकदमेबाजी के जोखिमों का आकलन करने के लिए भविष्य कहनेवाला विश्लेषिकी का उपयोग करने में माहिर हैं, बेहतर सौदों पर बातचीत करने के लिए अनुबंध विश्लेषण उपकरणों का लाभ उठाते हैं, और 'धूम्रपान बंदूक' सबूतों को उजागर करने के लिए ई-डिस्कवरी प्लेटफार्मों का उपयोग करते हैं। मानव और मशीन के बीच यह सहजीवी संबंध कानूनी क्षेत्र में उत्कृष्टता के लिए नया मानक बन रहा है।",
+                    h2_4: "नए कौशल और एक नई मानसिकता को अपनाना",
+                    p5: "इस विकास के लिए कौशल सेट और मानसिकता दोनों में बदलाव की आवश्यकता है। लॉ स्कूलों और फर्मों को कानूनी प्रौद्योगिकी और डेटा एनालिटिक्स को शामिल करने के लिए अपने प्रशिक्षण कार्यक्रमों को अनुकूलित करना चाहिए। वकीलों को यह समझने की एक मूलभूत समझ विकसित करने की आवश्यकता है कि एआई कैसे काम करता है, प्रोग्रामर बनने के लिए नहीं, बल्कि प्रौद्योगिकी के बुद्धिमान उपभोक्ता बनने के लिए। इससे भी महत्वपूर्ण बात यह है कि पेशे को एक ऐसे मॉडल से दूर जाना चाहिए जो मुख्य रूप से बिल किए गए घंटों को महत्व देता है और एक ऐसे मॉडल की ओर जो दक्षता, रणनीति और परिणामों को महत्व देता है। एआई सह-पायलट 'क्या' को संभालता है - डेटा, मिसालें, खंड। मानव वकील 'तो क्या' प्रदान करता है - व्याख्या, रणनीति, नैतिक निर्णय और सहानुभूतिपूर्ण ग्राहक संबंध।",
+                    p6: "प्रतिस्थापन का डर वृद्धि के उत्साह को रास्ता दे रहा है। एआई कानूनी पेशे का अंत नहीं है; यह इसके सबसे महत्वपूर्ण परिवर्तन की शुरुआत है। एआई को एक सह-पायलट के रूप में अपनाकर, वकील सांसारिक को उतार सकते हैं, अपनी बुद्धिमत्ता को बढ़ा सकते हैं, और पहले से कहीं अधिक तेज, होशियार और अधिक प्रभावी कानूनी सेवाएं प्रदान कर सकते हैं। भविष्य उन लोगों का है जो अपने नए डिजिटल भागीदारों के साथ उड़ना सीखते हैं।"
+                }
+            },
+            // ... Other blog posts will follow a similar structure
+            blog3: { en: { title: "From Draft to Digital: The Unstoppable Rise of Contract Automation", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } },
+            blog4: { en: { title: "Staying Ahead of the Curve: Leveraging AI for Proactive Legal Compliance", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } },
+            blog5: { en: { title: "The Digital Gavel: Navigating the Ethical Maze of AI in Legal Services", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } },
+            blog6: { en: { title: "Crystal Ball or Calculated Risk? The Power of Predictive Analytics in Law", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } },
+            blog7: { en: { title: "The End of Due Diligence as We Know It: AI-Powered Document Review is Here", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } },
+            blog8: { en: { title: "The AI-Enhanced Attorney: Charting the Future of Legal Consultancy", p1: "...", h2_1: "...", p2: "..." }, hi: { title: "...", p1: "...", h2_1: "...", p2: "..." } }
+        };
+        
+        let currentLanguage = 'en';
+
+        // --- Language and Theme ---
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('language', lang);
+            document.documentElement.lang = lang;
+
+            // Translate general UI elements
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (translations[lang] && translations[lang][key]) {
+                    if (['faq1Answer', 'faq2Answer', 'faq3Answer', 'faq4Answer', 'faq5Answer', 'teamMemberBio2'].includes(key)) {
+                        el.innerHTML = translations[lang][key];
+                    } else {
+                        el.innerText = translations[lang][key];
+                    }
+                }
+            });
+
+            // Translate blog listing page
+            const blogGrid = document.getElementById('blog-posts-grid');
+            if(blogGrid) {
+                blogPosts.forEach(post => {
+                    const titleEl = document.querySelector(`#blog-card-${post.id} [data-lang-key="blog${post.id}_title"]`);
+                    const descEl = document.querySelector(`#blog-card-${post.id} [data-lang-key="blog${post.id}_desc"]`);
+                    if(titleEl) titleEl.innerText = translations[lang][`blog${post.id}_title`];
+                    if(descEl) descEl.innerText = translations[lang][`blog${post.id}_desc`];
+                });
+            }
+
+            // Translate the currently visible blog post page
+            const visiblePost = document.querySelector('.blog-post-page:not(.hidden)');
+            if(visiblePost) {
+                const postId = visiblePost.id.split('-')[2];
+                const postLangData = blogTranslations[`blog${postId}`][lang];
+                if(postLangData) {
+                    Object.keys(postLangData).forEach(key => {
+                        const el = visiblePost.querySelector(`[data-blog-key="${key}"]`);
+                        if(el) el.innerHTML = postLangData[key];
+                    });
+                }
+            }
+
+
+            // Update active language button
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                 btn.classList.toggle('active', btn.dataset.lang === lang);
+            });
+            
+            // Update placeholder text
+            const queryInput = document.getElementById('ai-query-input');
+            if(queryInput) {
+                queryInput.placeholder = getCurrentTranslation('aiQueryPlaceholder');
+            }
+        }
+        
+        function getCurrentTranslation(key) { return translations[currentLanguage][key] || key; }
+        
+        // --- Page Navigation & Modals ---
+        window.showPage = function(pageId, event) {
+            if (event) event.preventDefault();
+            document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+            const newPage = document.getElementById(pageId);
+            if (newPage) {
+                 newPage.classList.remove('hidden');
+                 const animatedSection = newPage.querySelector('.animated-section');
+                 if(animatedSection) {
+                    animatedSection.classList.remove('visible');
+                    setTimeout(() => animatedSection.classList.add('visible'), 10);
+                 }
+            } else {
+                document.getElementById('home-page').classList.remove('hidden');
+            }
+            window.scrollTo(0, 0);
+            if (typeof closeMenu === 'function') {
+                closeMenu();
+            }
+        }
+
+        window.showAiAssistantPage = function(event) {
+            if (event) event.preventDefault();
+            const user = window.auth.currentUser;
+            if (user) { 
+                 showPage('ai-assistant-page');
+            } else {
+                document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        }
+        
+        window.closeAuthModal = function() {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
+        window.selectToolAndNavigate = function(tool, event) {
+            if (event) event.preventDefault();
+            const user = window.auth.currentUser;
+            if (user) {
+                showPage('ai-assistant-page');
+                const toolButtonOnAiPage = document.querySelector(`#ai-assistant-page .ai-tool-btn[onclick*="selectAiTool('${tool}'")]`);
+                if(window.selectAiTool) window.selectAiTool(tool, toolButtonOnAiPage);
+            } else {
+                 document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        }
+        
+        // --- AI Assistant Logic ---
+        let aiState = {
+            mode: 'basic',
+            tool: 'aiCaseSummary',
+            query: '',
+            lastVersion: 'basic',
+            files: []
+        };
+
+        window.setAiMode = function(mode) {
+            aiState.mode = mode;
+            const basicBtn = document.getElementById('mode-basic');
+            const proBtn = document.getElementById('mode-pro');
+            if (mode === 'basic') {
+                basicBtn.classList.add('bg-blue-600', 'text-white');
+                basicBtn.classList.remove('text-gray-600', 'dark:text-gray-300');
+                proBtn.classList.remove('bg-blue-600', 'text-white');
+                proBtn.classList.add('text-gray-600', 'dark:text-gray-300');
+            } else {
+                proBtn.classList.add('bg-blue-600', 'text-white');
+                proBtn.classList.remove('text-gray-600', 'dark:text-gray-300');
+                basicBtn.classList.remove('bg-blue-600', 'text-white');
+                basicBtn.classList.add('text-gray-600', 'dark:text-gray-300');
+            }
+        }
+
+        window.selectAiTool = function(tool, element) {
+            aiState.tool = tool;
+            document.querySelectorAll('.ai-tool-btn').forEach(btn => {
+                btn.classList.remove('ring-2', 'ring-blue-500');
+            });
+            if(element) {
+                element.classList.add('ring-2', 'ring-blue-500');
+            }
+            const examples = {
+                en: {
+                    legalDefinitions: 'What is "Bail"?',
+                    caseInsights: 'Summarize Kesavananda Bharati v. State of Kerala',
+                    aiCaseSummary: 'A defective product caused injury. What case is relevant?',
+                    draftPetition: 'Draft a bail application for a client.',
+                    explainNotice: 'Explain a legal notice for non-payment of rent.',
+                    docGenerator: 'Generate a rental agreement for a property in Mumbai.',
+                    bareAct: 'Explain Section 420 of the Indian Penal Code.',
+                    casePrediction: 'Scenario: A person was caught with a small quantity of a banned substance for the first time. What could be the likely outcome?',
+                    devilsAdvocate: 'Present your legal position or argument and get comprehensive counter-analysis.',
+                    docCompare: 'Upload two or more document versions to get a detailed change analysis.',
+                    strategySim: 'Input your case details to explore various strategic approaches.',
+                    regulatoryImpact: 'Describe your situation to get analysis of relevant regulatory impacts.',
+                    stakeholder: 'Input all parties and relationships to get comprehensive stakeholder analysis.',
+                    contractIntel: 'Upload multiple related contracts and get intelligent relationship mapping.',
+                },
+                hi: {
+                    legalDefinitions: '"जमानत" क्या है?',
+                    caseInsights: 'केशवानंद भारती बनाम केरल राज्य का सारांश दें',
+                    aiCaseSummary: 'एक खराब उत्पाद के कारण चोट लगी। कौन सा मामला प्रासंगिक है?',
+                    draftPetition: 'एक मुवक्किल के लिए जमानत याचिका का मसौदा तैयार करें।',
+                    explainNotice: 'किराया न देने पर कानूनी नोटिस समझाएं।',
+                    docGenerator: 'मुंबई में एक संपत्ति के लिए किराये का समझौता उत्पन्न करें।',
+                    bareAct: 'भारतीय दंड संहिता की धारा 420 की व्याख्या करें।',
+                    casePrediction: 'परिदृश्य: एक व्यक्ति पहली बार प्रतिबंधित पदार्थ की थोड़ी मात्रा के साथ पकड़ा गया था। संभावित परिणाम क्या हो सकता है?',
+                    devilsAdvocate: 'व्यापक प्रति-विश्लेषण प्राप्त करने के लिए अपनी कानूनी स्थिति या तर्क प्रस्तुत करें।',
+                    docCompare: 'विस्तृत परिवर्तन विश्लेषण प्राप्त करने के लिए दो या दो से अधिक दस्तावेज़ संस्करण अपलोड करें।',
+                    strategySim: 'विभिन्न रणनीतिक दृष्टिकोणों का पता लगाने के लिए अपने मामले का विवरण दर्ज करें।',
+                    regulatoryImpact: 'प्रासंगिक नियामक प्रभावों का विश्लेषण प्राप्त करने के लिए अपनी स्थिति का वर्णन करें।',
+                    stakeholder: 'व्यापक हितधारक विश्लेषण प्राप्त करने के लिए सभी पक्षों और संबंधों को दर्ज करें।',
+                    contractIntel: 'बुद्धिमान संबंध मानचित्रण प्राप्त करने के लिए कई संबंधित अनुबंध अपलोड करें।',
+                }
+            };
+            document.getElementById('ai-query-input').value = examples[currentLanguage][tool] || '';
+            document.getElementById('ai-query-input').focus();
+        }
+
+        window.generateAiResponse = async function(followUpQuery = null) {
+            const queryInput = document.getElementById('ai-query-input');
+            aiState.query = followUpQuery || queryInput.value.trim();
+             if (!aiState.query && !aiState.files.length) {
+                showCustomAlert('Please enter a query or upload a file.');
+                return;
+            }
+            appendMessage(aiState.query, 'user');
+            queryInput.value = '';
+            
+            const chatArea = document.getElementById('ai-chat-area');
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.innerHTML = '<div class="flex items-center"><div class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div><span>Generating response...</span></div>';
+            chatArea.appendChild(loadingIndicator);
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            await getFinalResponse(loadingIndicator);
+        }
+        
+        async function getFinalResponse(loadingIndicator) {
+            const apiKey = "AIzaSyC5zJNg1bUPzbTjJ_nCzJINWBqSG4GESI8"; // Gemini API Key
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            const systemPrompt = getSystemPromptForTool(aiState.tool);
+            let fileInfo = aiState.files.length > 0 ? `The user has uploaded the following files: ${aiState.files.map(f => f.name).join(', ')}. Please consider their contents.` : '';
+            const userQuery = `Query: "${aiState.query}". ${fileInfo} Provide a response in ${aiState.mode} mode.`;
+            const payload = { contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userQuery }] }] };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                const result = await response.json();
+
+                if (loadingIndicator) loadingIndicator.remove();
+
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    appendMessage(text, 'model');
+                    generateFollowUpQuestions(aiState.query, text);
+                } else {
+                    throw new Error(result.promptFeedback ? `Request blocked: ${result.promptFeedback.blockReason}` : 'No content received.');
+                }
+            } catch (error) {
+                console.error("API call failed:", error);
+                 if (loadingIndicator) loadingIndicator.remove();
+                appendMessage(`<p class="text-red-500">Sorry, an error occurred: ${error.message}</p>`, 'model');
+            }
+        }
+        
+        async function generateFollowUpQuestions(originalQuery, responseText) {
+            const followUpContainer = document.getElementById('follow-up-questions');
+            followUpContainer.innerHTML = '';
+            
+            const metaPrompt = `Based on the user's query "${originalQuery}" and the AI response "${responseText}", generate three concise, relevant follow-up questions the user might have. Return the questions as a JSON array of strings, like ["question 1", "question 2", "question 3"].`;
+            const apiKey = "AIzaSyC5zJNg1bUPzbTjJ_nCzJINWBqSG4GESI8"; // Gemini API Key
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: metaPrompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                let questions = [];
+                if (result.candidates && result.candidates.length > 0) {
+                    let rawText = result.candidates[0].content.parts[0].text;
+                    // Clean up markdown and parse JSON
+                    const jsonMatch = rawText.match(/\[.*\]/s);
+                    if(jsonMatch) {
+                       questions = JSON.parse(jsonMatch[0]);
+                    }
+                }
+                
+                questions.forEach(q => {
+                    const button = document.createElement('button');
+                    button.className = 'bg-gray-200 dark:bg-gray-700 text-sm p-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600';
+                    button.textContent = q;
+                    button.onclick = () => generateAiResponse(q);
+                    followUpContainer.appendChild(button);
+                });
+
+            } catch (error) {
+                console.error("Follow-up generation failed:", error);
+            }
+        }
+        
+        function formatMarkdown(text) {
+             // More robust markdown conversion
+            let html = text
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/^- (.*$)/gim, '<li>$1</li>');
+            
+            html = html.replace(/<li>/g, '<ul><li>').replace(/<\/li>\n(?!<li>)/g, '</li></ul>');
+            
+            return html.replace(/\n/g, '<br />').replace(/<br \/><ul>/g, '<ul>').replace(/<\/ul><br \/>/g, '</ul>');
+        }
+        
+       function appendMessage(content, role) {
+            const chatArea = document.getElementById('ai-chat-area');
+            const messageDiv = document.createElement('div');
+            const icon = role === 'user' ? 'fas fa-user' : 'fas fa-robot';
+            const bgColor = role === 'user' ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-gray-200 dark:bg-gray-700';
+            const messageId = 'msg-' + Date.now();
+
+            messageDiv.className = `p-4 rounded-lg mb-4 ${bgColor}`;
+            let messageContent;
+
+            if (role === 'model') {
+                messageContent = `<div class="flex justify-between items-start">
+                                    <p class="font-semibold mb-2"><i class="${icon} mr-2"></i>AI Assistant</p>
+                                  </div>
+                                  <div id="${messageId}" class="prose dark:prose-invert max-w-none">${formatMarkdown(content)}</div>
+                                  <div class="mt-3 pt-2 border-t border-gray-300 dark:border-gray-600 flex items-center justify-end space-x-4">
+                                      <button onclick="copyMessageContent('${messageId}')" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 text-sm font-medium">
+                                          <i class="fas fa-copy mr-1"></i><span data-lang-key="copy">Copy</span>
+                                      </button>
+                                      <button onclick="redoQuery()" class="text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 text-sm font-medium">
+                                          <i class="fas fa-redo mr-1"></i><span data-lang-key="redo">Redo</span>
+                                      </button>
+                                  </div>`;
+            } else {
+                messageContent = `<p class="font-semibold mb-2"><i class="${icon} mr-2"></i>You</p>
+                                  <div class="prose dark:prose-invert max-w-none">${formatMarkdown(content)}</div>`;
+            }
+            
+            messageDiv.innerHTML = messageContent;
+            chatArea.appendChild(messageDiv);
+            messageDiv.scrollIntoView({ behavior: "smooth", block: "end" });
+            setLanguage(currentLanguage); // re-apply language for new buttons
+        }
+
+        window.copyMessageContent = function(elementId) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showCustomAlert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                // Fallback for browsers that don't support clipboard API well in iframes
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showCustomAlert('Copied to clipboard!');
+                } catch (err) {
+                    showCustomAlert('Failed to copy.');
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+
+
+        window.redoQuery = function() {
+            getFinalResponse();
+        }
+
+        function getSystemPromptForTool(tool) {
+            const basePrompt = `You are an expert-level Legal AI advisor with in-depth knowledge of national and international law, regulations, case precedents, and legal reasoning. Your task is to help me answer a legal query with maximum accuracy, relevance, and clarity. When responding to a legal question, follow this detailed structure: 1. **Restate the Query for Legal Clarity** – Paraphrase the legal issue in precise legal terms. 2. **Identify Jurisdiction & Legal Domain**. 3. **Outline Applicable Statutes and Regulations**. 4. **Summarize Key Case Law (if applicable)**. 5. **Present Step-by-Step Legal Reasoning** (Use IRAC where helpful). 6. **Discuss Possible Legal Interpretations**. 7. **State Practical Implications and Risks**. 8. **Suggest Recommended Actions**. 9. **Include Disclaimers**. 10. **Use Clear, Formal Language**.`;
+            const toolPrompts = {
+                legalDefinitions: `Focus on providing a detailed definition, citing the specific source (e.g., Section 2(a) of the Indian Contract Act, 1872) and relevant case law.`,
+                caseInsights: `Focus on providing a detailed analysis of the case, covering facts, issues, judgment, and significance.`,
+                aiCaseSummary: `Focus on identifying a single, highly relevant landmark Indian case that best addresses the user's scenario.`,
+                draftPetition: `Focus on creating a well-structured, professional draft based on standard Indian legal formats. Include placeholders.`,
+                explainNotice: `Focus on explaining the purpose, components, and consequences of a legal notice in simple terms for Indian law.`,
+                docGenerator: `Focus on generating a standard, comprehensive draft of a legal document tailored to Indian standards.`,
+                bareAct: `Focus on providing the exact text of a section of an Indian Act, followed by a clear explanation.`,
+                casePrediction: `Focus on providing a predictive analysis of potential legal outcomes in India, with strong disclaimers.`,
+                devilsAdvocate: `Response Framework: "I'll challenge your position by presenting the strongest counterarguments. Here are the potential weaknesses in your case: [lists vulnerabilities]. The opposing side would likely argue: [presents contrary evidence/precedents]. To strengthen your position, consider addressing these points: [strategic recommendations]. Remember, anticipating opposition makes your argument stronger."`,
+                docCompare: `Response Framework: "I've compared your documents and found [number] significant changes. Key modifications include: [major changes with implications]. New clauses added: [additions with analysis]. Removed provisions: [deletions with impact assessment]. Risk level of changes: [high/medium/low with explanation]. Recommendations: [action items for each significant change]."`,
+                strategySim: `Response Framework: "Based on your case parameters, I've analyzed [number] strategic approaches. Strategy 1: [approach] has a [percentage] success rate based on similar cases, with these key advantages: [benefits] and risks: [drawbacks]. Strategy 2: [alternative approach] offers [different benefits/risks]. Recommended timeline: [strategic sequence]. Critical success factors: [key elements needed]."`,
+                regulatoryImpact: `Response Framework: "The regulatory changes you've identified will impact your situation in these ways: [direct effects]. Compliance timeline: [deadlines and phases]. Required actions: [specific steps with priorities]. Cost implications: [financial impact assessment]. Non-compliance risks: [penalties and consequences]. Implementation roadmap: [step-by-step compliance plan]."`,
+                stakeholder: `Response Framework: "Stakeholder dynamics analysis: Power distribution mapping: [who has leverage over whom]. Legal dependency chains: [critical relationship links]. Influence network effects: [how decisions cascade through parties]. Coalition building opportunities: [strategic alliances possible]. Pressure point identification: [where to apply strategic influence]. Conflict of interest mapping: [potential ethical issues]. Negotiation sequencing strategy: [optimal order for stakeholder engagement]."`,
+                contractIntel: `Response Framework: "Contract ecosystem analysis reveals: Primary agreement dependencies: [how contracts link together]. Conflicting provisions detected: [specific conflicts with severity levels]. Performance obligation chains: [who owes what to whom]. Risk concentration points: [where multiple contracts create vulnerability]. Amendment impact modeling: [how changes ripple through system]. Enforcement priority matrix: [which agreements take precedence]. Strategic leverage points: [key contractual advantages]."`
+            };
+            return basePrompt + (toolPrompts[tool] || '');
+        }
+
+        async function optimizePrompt() {
+            const userInput = document.getElementById('ai-query-input').value;
+            if (!userInput.trim()) return;
+
+            const optimizerModal = document.getElementById('optimizer-modal');
+            const optimizedOutput = document.getElementById('optimized-prompt-output');
+            optimizedOutput.innerHTML = '<em>Optimizing...</em>';
+            optimizerModal.classList.remove('hidden');
+
+            const metaPrompt = `You are a prompt engineering expert. Rewrite the following user query to be more specific, clear, and structured for a legal AI. User Query: "${userInput}" Return only the optimized version.`;
+            
+            const apiKey = "AIzaSyC5zJNg1bUPzbTjJ_nCzJINWBqSG4GESI8"; // Gemini API Key
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: metaPrompt }] }] };
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                const optimizedText = result.candidates[0].content.parts[0].text;
+                optimizedOutput.textContent = optimizedText;
+                
+                document.getElementById('use-optimized-btn').onclick = () => {
+                    document.getElementById('ai-query-input').value = optimizedText;
+                    closeOptimizerModal();
+                };
+
+            } catch(error) {
+                console.error("Prompt optimization failed:", error);
+                optimizedOutput.textContent = 'Could not optimize prompt at this time.';
+            }
+        }
+        window.optimizePrompt = optimizePrompt;
+
+        window.closeOptimizerModal = function() {
+            document.getElementById('optimizer-modal').classList.add('hidden');
+        }
+
+        function toggleFaq(button) {
+            const answer = button.nextElementSibling;
+            const icon = button.querySelector('i');
+            answer.classList.toggle('hidden');
+            icon.classList.toggle('fa-chevron-down');
+            icon.classList.toggle('fa-chevron-up');
+        }
+
+        function toggleHistory() {
+            const historyContent = document.getElementById('history-content');
+            const chevron = document.getElementById('history-chevron');
+            historyContent.classList.toggle('hidden');
+            chevron.classList.toggle('fa-chevron-down');
+            chevron.classList.toggle('fa-chevron-up');
+        }
+
+        function handleFileUpload(event) {
+            aiState.files = Array.from(event.target.files);
+            renderFileList();
+        }
+        
+        function removeFile(index) {
+            aiState.files.splice(index, 1);
+            renderFileList();
+        }
+        
+        function renderFileList() {
+            const fileDisplayArea = document.getElementById('file-display-area');
+            if(!fileDisplayArea) return;
+            fileDisplayArea.innerHTML = '';
+            aiState.files.forEach((file, index) => {
+                 fileDisplayArea.innerHTML += `<div class="flex items-center justify-between bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg text-sm mt-2"><span class="truncate"><i class="fas fa-file-alt mr-2"></i>${file.name}</span><button onclick="removeFile(${index})" class="text-red-500 ml-2"><i class="fas fa-times-circle"></i></button></div>`;
+            });
+        }
+        window.removeFile = removeFile;
+        
+        function showCustomAlert(message) {
+            let alertBox = document.getElementById('custom-alert-box');
+            if (!alertBox) {
+                alertBox = document.createElement('div');
+                alertBox.id = 'custom-alert-box';
+                alertBox.className = 'fixed top-5 right-5 bg-blue-600 text-white py-2 px-4 rounded-lg shadow-lg z-50 transition-opacity duration-300 opacity-0';
+                document.body.appendChild(alertBox);
+            }
+            alertBox.innerText = message;
+            alertBox.classList.remove('opacity-0');
+            setTimeout(() => { 
+                 alertBox.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('visible');
+            });
+        }, { threshold: 0.1 });
+        
+        // --- Mobile Menu Toggle ---
+        let mobileBtn, overlay, menuPanel, closeBtn;
+
+        function openMenu() {
+            overlay.classList.add('active');
+            menuPanel.classList.add('active');
+            mobileBtn.setAttribute('aria-expanded', 'true');
+            overlay.setAttribute('aria-hidden', 'false');
+        }
+        function closeMenu() {
+            overlay.classList.remove('active');
+            menuPanel.classList.remove('active');
+            mobileBtn.setAttribute('aria-expanded', 'false');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
+        window.closeMenu = closeMenu;
+
+        // === Bottom nav hide when chat opens ===
+        window.toggleSimpleChat = () => {
+            const chat  = document.getElementById('chat-container');
+            const bnav  = document.getElementById('bottom-nav');
+            chat.classList.toggle('chat-visible');
+            chat.classList.toggle('chat-hidden');
+            bnav.classList.toggle('hidden');
+        };
+        
+        // --- DOMContentLoaded Listener ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Blog Post Injection ---
+            const blogGrid = document.getElementById('blog-posts-grid');
+            const blogPostContainer = document.getElementById('blog-post-container');
+
+            if(blogGrid && blogPostContainer){
+                // Populate blog grid
+                blogPosts.forEach(post => {
+                    const card = document.createElement('div');
+                    card.id = `blog-card-${post.id}`;
+                    card.className = "bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden service-card";
+                    card.innerHTML = `
+                        <div class="h-48 overflow-hidden">
+                            <img src="${post.image}" alt="Blog post image" class="w-full h-full object-cover transition-transform duration-300 hover:scale-105" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/400x192/cccccc/ffffff?text=Blog+Post';">
+                        </div>
+                        <div class="p-6">
+                            <div class="text-sm text-blue-600 dark:text-blue-400 mb-2 font-semibold">${post.date} • ${post.category}</div>
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3" data-lang-key="blog${post.id}_title"></h3>
+                            <p class="text-gray-600 dark:text-gray-300 mb-4" data-lang-key="blog${post.id}_desc"></p>
+                            <a href="#" onclick="showPage('blog-post-${post.id}', event)" class="text-blue-600 dark:text-blue-400 font-medium hover:underline" data-lang-key="readMore">Read More →</a>
+                        </div>
+                    `;
+                    blogGrid.appendChild(card);
+
+                    // Create the full blog post page
+                    const postPage = document.createElement('div');
+                    postPage.id = `blog-post-${post.id}`;
+                    postPage.className = 'page blog-post-page hidden';
+                    const postContent = blogTranslations[`blog${post.id}`]['en']; // Default to English
+                    postPage.innerHTML = `
+                        <section class="py-20 px-4 sm:px-6 lg:px-8">
+                            <div class="max-w-4xl mx-auto">
+                                <a href="#" onclick="showPage('blog-page', event)" class="inline-block mb-8 text-blue-600 dark:text-blue-400 hover:underline" data-lang-key="backToBlog">← Back to Blog</a>
+                                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white mb-4" data-blog-key="title">${postContent.title}</h1>
+                                <div class="text-md text-gray-500 dark:text-gray-400 mb-8">${post.date} • ${post.category}</div>
+                                <img src="${post.image}" alt="Blog post image" class="w-full h-auto rounded-lg shadow-lg mb-12 max-h-[500px] object-cover" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/800x500/cccccc/ffffff?text=Blog+Image';">
+                                <div class="prose dark:prose-invert max-w-none lg:prose-lg text-gray-700 dark:text-gray-300 blog-content">
+                                    <p data-blog-key="p1">${postContent.p1}</p>
+                                    <h2 data-blog-key="h2_1">${postContent.h2_1}</h2>
+                                    <p data-blog-key="p2">${postContent.p2}</p>
+                                    <h2 data-blog-key="h2_2">${postContent.h2_2}</h2>
+                                    <p data-blog-key="p3">${postContent.p3}</p>
+                                    <h2 data-blog-key="h2_3">${postContent.h2_3}</h2>
+                                    <p data-blog-key="p4">${postContent.p4}</p>
+                                    <h2 data-blog-key="h2_4">${postContent.h2_4}</h2>
+                                    <p data-blog-key="p5">${postContent.p5}</p>
+                                    <p data-blog-key="p6">${postContent.p6}</p>
+                                </div>
+                            </div>
+                        </section>
+                    `;
+                    blogPostContainer.appendChild(postPage);
+                });
+            }
+
+
+            // Mobile menu elements
+            mobileBtn  = document.getElementById('mobile-menu-button');
+            overlay    = document.getElementById('mobile-menu-overlay');
+            menuPanel  = document.getElementById('mobile-menu-panel');
+            closeBtn   = document.getElementById('mobile-menu-close');
+            
+            if (mobileBtn) mobileBtn.addEventListener('click', openMenu);
+            if (closeBtn) closeBtn.addEventListener('click', closeMenu);
+            if (overlay) overlay.addEventListener('click', closeMenu);
+
+            // Initial setup
+            showPage('home-page');
+            document.querySelectorAll('.animated-section').forEach(section => observer.observe(section));
+            document.querySelectorAll('img').forEach(img => img.setAttribute('loading', 'lazy'));
+            
+            const fileUpload = document.getElementById('file-upload');
+            if(fileUpload) fileUpload.addEventListener('change', handleFileUpload);
+            
+            // --- Persist Theme ---
+            const themeToggle = document.getElementById('dark-mode-toggle');
+            const rootEl = document.documentElement;
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                rootEl.classList.add('dark');
+            } else {
+                rootEl.classList.remove('dark');
+            }
+            themeToggle.addEventListener('click', () => {
+                const isDark = rootEl.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            });
+
+            // --- Persist Language ---
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                const lang = btn.dataset.lang;
+                setLanguage(lang);
+                });
+            });
+            const lang = localStorage.getItem('language') || 'en';
+            setLanguage(lang);
+
+
+            // Query Form Submission
+            const queryForm = document.getElementById('query-form');
+            if (queryForm) {
+                const queryFormMessage = document.getElementById('query-form-message');
+                queryForm.addEventListener('submit', e => {
+                    if (!queryForm.checkValidity()) {
+                        e.preventDefault();
+                        queryForm.querySelectorAll(':invalid').forEach(el => {
+                            el.classList.add('border-red-500');
+                        });
+                        return;
+                    }
+                    e.preventDefault();
+                    queryFormMessage.innerHTML = '<p class="text-blue-500">Submitting...</p>';
+                    fetch("https://sheetdb.io/api/v1/wmpfl5dqju9e9", {
+                        method: "POST",
+                        body: new FormData(queryForm)
+                    }).then(response => response.json()).then((html) => {
+                        queryForm.reset();
+                        queryFormMessage.innerHTML = "<p class='text-green-500'>Form submitted successfully!</p>";
+                        setTimeout(() => { queryFormMessage.innerHTML = ''; }, 3000);
+                    }).catch(error => {
+                        console.error('Form submission error:', error);
+                        queryFormMessage.innerHTML = "<p class='text-red-500'>There was an error submitting the form.</p>";
+                    });
+                });
+            }
+
+            // Prompt Optimizer Button
+            const optimizeBtn = document.getElementById('optimize-prompt-btn');
+            if (optimizeBtn) {
+                optimizeBtn.addEventListener('click', optimizePrompt);
+            }
+
+        });
+
+    </script>
+</body>
+</html>
